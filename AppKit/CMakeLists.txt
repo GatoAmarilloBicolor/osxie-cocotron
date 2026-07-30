@@ -577,8 +577,8 @@ function(add_backend name)
 		target_link_libraries(${name}_backend PRIVATE ${BACKEND_DEPENDENCIES})
 	endif (BACKEND_DEPENDENCIES)
 
-	install(TARGETS ${name}_backend DESTINATION "libexec/darling${path}/MacOS")
-	install(FILES ${BACKEND_INFO_PLIST} DESTINATION "libexec/darling${path}" RENAME Info.plist)
+	install(TARGETS ${name}_backend DESTINATION "libexec/osxie${path}/MacOS")
+	install(FILES ${BACKEND_INFO_PLIST} DESTINATION "libexec/osxie${path}" RENAME Info.plist)
 
 	if (BACKEND_RESOURCES)
 		while (BACKEND_RESOURCES)
@@ -587,7 +587,7 @@ function(add_backend name)
 			get_filename_component(res_install_dir ${res_install_path} DIRECTORY)
 			get_filename_component(res_install_name ${res_install_path} NAME)
 			install(FILES ${res_source_path}
-				DESTINATION libexec/darling${path}/Resources/${res_install_dir}
+				DESTINATION libexec/osxie${path}/Resources/${res_install_dir}
 				RENAME ${res_install_name})
 			list(REMOVE_AT BACKEND_RESOURCES 0 1)
 		endwhile (BACKEND_RESOURCES)
