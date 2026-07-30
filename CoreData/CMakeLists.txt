@@ -1,6 +1,6 @@
 project(CoreData)
 
-include(darling_framework)
+include(osxie_framework)
 
 remove_sdk_framework(CoreData)
 

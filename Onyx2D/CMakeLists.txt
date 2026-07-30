@@ -1,6 +1,6 @@
 project(Onyx2D)
 
-include(darling_framework)
+include(osxie_framework)
 
 remove_sdk_framework(Onyx2D)
 

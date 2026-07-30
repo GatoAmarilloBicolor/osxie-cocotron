@@ -1,6 +1,6 @@
 project(CoreGraphics)
 
-include(darling_framework)
+include(osxie_framework)
 
 remove_sdk_framework(CoreGraphics)
 
@@ -143,7 +143,7 @@ function(add_backend name)
 	set(path "/System/Library/Frameworks/CoreGraphics.framework/Versions/C/Resources/Backends/${name}.backend/Contents")
 	set(DYLIB_INSTALL_NAME "${path}/MacOS/${name}")
 
-	add_darling_library(${name}_cgbackend SHARED ${BACKEND_SOURCES})
+	add_osxie_library(${name}_cgbackend SHARED ${BACKEND_SOURCES})
 	set_target_properties(${name}_cgbackend PROPERTIES OUTPUT_NAME "${name}" SUFFIX "" PREFIX "")
 	make_fat(${name}_cgbackend)
 

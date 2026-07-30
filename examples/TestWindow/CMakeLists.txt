@@ -1,8 +1,8 @@
 project(TestWindow)
 
-include(darling_exe)
+include(osxie_exe)
 
-add_darling_executable(TestWindow
+add_osxie_executable(TestWindow
     AppDelegate.m
     main.m
 )
