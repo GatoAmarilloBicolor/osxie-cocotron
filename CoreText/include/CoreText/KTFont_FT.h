@@ -20,7 +20,7 @@
 
 #import <CoreText/KTFont.h>
 
-#ifdef DARLING
+#if defined(DARLING) || defined(OSXIE)
 #define __linux__
 #endif
 
@@ -33,7 +33,7 @@ typedef int ptrdiff_t;
 #import FT_FREETYPE_H
 #import FT_RENDER_H
 
-#ifdef DARLING
+#if defined(DARLING) || defined(OSXIE)
 #undef __linux__
 #endif
 

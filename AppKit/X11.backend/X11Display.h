@@ -11,7 +11,7 @@
 #import <X11/Xresource.h>
 #import <X11/Xlocale.h>
 
-#ifdef DARLING
+#if defined(DARLING) || defined(OSXIE)
 #import <CoreFoundation/CFRunLoop.h>
 #import <CoreFoundation/CFSocket.h>
 #endif
@@ -21,7 +21,7 @@
 @interface X11Display : NSDisplay {
     Display *_display;
     int _fileDescriptor;
-#ifndef DARLING
+#if !defined(DARLING) && !defined(OSXIE)
     NSSelectInputSource *_inputSource;
 #else
     // We use CFRunLoop directly, without going through any Foundation wrapper,

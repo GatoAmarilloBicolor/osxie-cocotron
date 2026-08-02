@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 @class NSFontDescriptor;
 
-#ifndef DARLING
+#if !defined(DARLING) && !defined(OSXIE)
 // Provides an extendable translation scheme for apps that use non-standard
 // fonts in UI elements
 
@@ -160,7 +160,7 @@ typedef enum {
 
 @end
 
-#ifndef DARLING
+#if !defined(DARLING) && !defined(OSXIE)
 @interface NSFont (PortatibilityAdditions)
 
 + (void) setNibFontTranslator: (NSNibFontNameTranslator *) fontTranslator;

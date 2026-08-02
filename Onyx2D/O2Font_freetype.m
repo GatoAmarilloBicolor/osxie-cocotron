@@ -4,7 +4,7 @@
 
 @implementation O2Font_freetype
 
-#ifdef DARLING
+#if defined(DARLING) || defined(OSXIE)
 
 O2FontRef O2FontCreateWithFontName_platform(NSString *name) {
     return [[O2Font_freetype alloc] initWithFontName: name];

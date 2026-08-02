@@ -92,7 +92,7 @@ void O2JPGEncoderWriteImage(O2JPGEncoderRef self, O2ImageRef image,
 
     jpeg_destroy_compress(&cinfo);
 
-#ifndef DARLING
+#if !defined(DARLING) && !defined(OSXIE)
     free(outbuffer);
 #else
 #include <elfcalls.h>

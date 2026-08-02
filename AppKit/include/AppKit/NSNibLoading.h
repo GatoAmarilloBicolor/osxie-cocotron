@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #define IBOutlet
 #endif
 
-#if defined(DARLING) && !defined(NIBDEBUG)
+#if (defined(DARLING) || defined(OSXIE)) && !defined(NIBDEBUG)
 #define NIBDEBUG(desc, ...)
 #endif
 

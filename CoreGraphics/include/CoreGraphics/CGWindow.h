@@ -18,6 +18,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #include <CoreFoundation/CoreFoundation.h>
+#import <CoreGraphics/CoreGraphicsExport.h>
 #import <CoreGraphics/CGSubWindow.h>
 #import <CoreGraphics/CGWindowLevel.h>
 #import <CoreGraphics/CGImage.h>

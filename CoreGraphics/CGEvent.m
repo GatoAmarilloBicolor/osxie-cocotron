@@ -1,5 +1,5 @@
 /*
- This file is part of Darling.
+ This file is part of Osxie.
 
  Copyright (C) 2020 Lubos Dolezel
 

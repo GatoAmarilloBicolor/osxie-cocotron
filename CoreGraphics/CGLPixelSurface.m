@@ -5,7 +5,7 @@
 #import <Onyx2D/O2Image.h>
 
 // this should be fixed upstream
-#ifndef DARLING
+#if !defined(DARLING) && !defined(OSXIE)
 #import <AppKit/O2Surface_DIBSection.h>
 #else
 #import <Onyx2D/O2Surface.h>
@@ -69,7 +69,7 @@
     _bufferObjects = malloc(_numberOfBuffers * sizeof(GLuint));
     _readPixels = malloc(_numberOfBuffers * sizeof(void *));
     _staticPixels = malloc(_numberOfBuffers * sizeof(void *));
-#ifndef DARLING
+#if !defined(DARLING) && !defined(OSXIE)
     _surface = [[O2Surface_DIBSection alloc] initWithWidth: _width
                                                     height: -_height
                                compatibleWithDeviceContext: nil];

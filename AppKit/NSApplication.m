@@ -1624,7 +1624,7 @@ NSApplication *NSApp = nil;
 @end
 
 int NSApplicationMain(int argc, const char *argv[]) {
-#ifndef DARLING
+#if !defined(DARLING) && !defined(OSXIE)
     __NSInitializeProcess(argc, argv);
 #endif
 
@@ -1633,7 +1633,7 @@ int NSApplicationMain(int argc, const char *argv[]) {
     Class class = [bundle principalClass];
     NSString *nibFile = [bundle infoDictionary][@"NSMainNibFile"];
 
-#ifndef DARLING
+#if !defined(DARLING) && !defined(OSXIE)
     if (argc > 1) {
         NSMutableArray *arguments =
                 [NSMutableArray arrayWithCapacity: arg c - 1];

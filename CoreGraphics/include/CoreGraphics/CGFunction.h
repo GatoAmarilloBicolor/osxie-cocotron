@@ -18,6 +18,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <CoreGraphics/CGGeometry.h>
+#import <CoreGraphics/CoreGraphicsExport.h>
 
 typedef struct CF_BRIDGED_TYPE(id) O2Function *CGFunctionRef;
 

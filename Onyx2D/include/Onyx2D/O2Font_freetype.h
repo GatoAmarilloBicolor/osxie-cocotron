@@ -3,7 +3,7 @@
 
 #ifdef FREETYPE_PRESENT
 
-#ifdef DARLING
+#if defined(DARLING) || defined(OSXIE)
 #define __linux__
 #endif
 
@@ -13,7 +13,7 @@
 
 #import <fontconfig/fontconfig.h>
 
-#ifdef DARLING
+#if defined(DARLING) || defined(OSXIE)
 #undef __linux__
 #endif
 

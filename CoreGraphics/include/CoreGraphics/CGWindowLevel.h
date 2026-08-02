@@ -2,6 +2,7 @@
 #define CGWINDOWLEVEL_H
 
 #import <CoreFoundation/CoreFoundation.h>
+#import <CoreGraphics/CoreGraphicsExport.h>
 
 // TODO: Fix CGWindowLevel
 // CGWindowLevel actually isn't a ENUM, but is just a typedef.

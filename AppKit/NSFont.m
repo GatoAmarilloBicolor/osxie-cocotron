@@ -40,7 +40,7 @@ FOUNDATION_EXPORT char *NSUnicodeToSymbol(const unichar *characters,
                                           NSUInteger *resultLength,
                                           NSZone *zone);
 
-#ifndef DARLING
+#if !defined(DARLING) && !defined(OSXIE)
 @implementation NSNibFontNameTranslator
 // It seems the default mapping should really go to some platform specific place
 - (NSString *) translateToNibFontName: (NSString *) name {
@@ -107,7 +107,7 @@ FOUNDATION_EXPORT char *NSUnicodeToSymbol(const unichar *characters,
 
 @implementation NSFont
 
-#ifndef DARLING
+#if !defined(DARLING) && !defined(OSXIE)
 static NSNibFontNameTranslator *_nibFontTranslator = nil;
 #endif
 
@@ -123,7 +123,7 @@ static NSLock *_cacheLock = nil;
         _fontCacheSize = 0;
         _fontCache = NSZoneMalloc([self zone],
                                   sizeof(NSFont *) * _fontCacheCapacity);
-#ifndef DARLING
+#if !defined(DARLING) && !defined(OSXIE)
         _nibFontTranslator = [[NSNibFontNameTranslator alloc] init];
 #endif
         _cacheLock = [[NSLock alloc] init];
@@ -328,7 +328,7 @@ static NSLock *_cacheLock = nil;
 
 - (void) encodeWithCoder: (NSCoder *) coder {
     if ([coder allowsKeyedCoding]) {
-#ifndef DARLING
+#if !defined(DARLING) && !defined(OSXIE)
         [coder encodeObject: [[NSFont nibFontTranslator]
                                      translateToNibFontName: _name]
                      forKey: @"NSName"];
@@ -350,7 +350,7 @@ static NSLock *_cacheLock = nil;
     if ([coder allowsKeyedCoding]) {
         NSKeyedUnarchiver *keyed = (NSKeyedUnarchiver *) coder;
         NSString *fontName = [keyed decodeObjectForKey: @"NSName"];
-#ifndef DARLING
+#if !defined(DARLING) && !defined(OSXIE)
         name = [[NSFont nibFontTranslator] translateFromNibFontName: fontName];
 #else
         name = fontName;
@@ -915,7 +915,7 @@ NSInteger NSConvertGlyphsToPackedGlyphs(NSGlyph *glyphs, NSInteger length,
 
 @end
 
-#ifndef DARLING
+#if !defined(DARLING) && !defined(OSXIE)
 @implementation NSFont (PortatibilityAdditions)
 
 + (void) setNibFontTranslator: (NSNibFontNameTranslator *) fontTranslator {

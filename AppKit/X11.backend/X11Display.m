@@ -27,7 +27,7 @@
 #import <AppKit/NSScreen.h>
 #import <Foundation/NSDebug.h>
 
-#ifndef DARLING
+#if !defined(DARLING) && !defined(OSXIE)
 #import <Foundation/NSSelectInputSource.h>
 #import <Foundation/NSSocket_bsd.h>
 #endif
@@ -63,7 +63,7 @@ static int errorHandler(Display *display, XErrorEvent *errorEvent) {
     return [(X11Display *) [X11Display currentDisplay] handleError: errorEvent];
 }
 
-#ifdef DARLING
+#if defined(DARLING) || defined(OSXIE)
 static void socketCallback(CFSocketRef s, CFSocketCallBackType type,
                            CFDataRef address, const void *data, void *info)
 {
@@ -93,7 +93,7 @@ static void socketCallback(CFSocketRef s, CFSocketCallBackType type,
         XSetErrorHandler(errorHandler);
 
         _fileDescriptor = ConnectionNumber(_display);
-#ifndef DARLING
+#if !defined(DARLING) && !defined(OSXIE)
         _inputSource = [[NSSelectInputSource
                 socketInputSourceWithSocket:
                         [NSSocket_bsd socketWithDescriptor: _fileDescriptor]]
@@ -152,7 +152,7 @@ static void socketCallback(CFSocketRef s, CFSocketCallBackType type,
 
     if (_display)
         XCloseDisplay(_display);
-#ifdef DARLING
+#if defined(DARLING) || defined(OSXIE)
     CFRunLoopRemoveSource(CFRunLoopGetMain(), _source, kCFRunLoopCommonModes);
     if (_source != NULL)
         CFRelease(_source);
@@ -960,7 +960,7 @@ static NSDictionary *modeInfoToDictionary(const XRRModeInfo *mi, int depth) {
                              inMode: (NSRunLoopMode) mode
                             dequeue: (BOOL) dequeue
 {
-#ifndef DARLING
+#if !defined(DARLING) && !defined(OSXIE)
     [[NSRunLoop currentRunLoop] addInputSource: _inputSource forMode: mode];
 #else
     [self processPendingEvents];
@@ -971,7 +971,7 @@ static NSDictionary *modeInfoToDictionary(const XRRModeInfo *mi, int depth) {
                                             inMode: mode
                                            dequeue: dequeue];
 
-#ifndef DARLING
+#if !defined(DARLING) && !defined(OSXIE)
     [[NSRunLoop currentRunLoop] removeInputSource: _inputSource forMode: mode];
 #endif
 
@@ -1408,7 +1408,7 @@ static NSDictionary *modeInfoToDictionary(const XRRModeInfo *mi, int depth) {
     }
 }
 
-#ifndef DARLING
+#if !defined(DARLING) && !defined(OSXIE)
 - (void) selectInputSource: (NSSelectInputSource *) inputSource
                selectEvent: (NSUInteger) selectEvent
 {
