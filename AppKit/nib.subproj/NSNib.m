@@ -18,6 +18,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import "NSCustomObject.h"
+#import "GSNibArchiveKeyedUnarchiver.h"
 #import "NSIBObjectData.h"
 #import "NSNibHelpConnector.h"
 #import <AppKit/NSApplication.h>
@@ -165,6 +166,8 @@ NSString *const NSNibTopLevelObjects = @"NSNibTopLevelObjects";
 
 - (BOOL) instantiateNibWithExternalNameTable: (NSDictionary *) nameTable {
 
+    fprintf(stderr, "[TRACE] NSNib instantiateNibWithExternalNameTable: begin\n");
+
     NIBDEBUG(@"instantiateNibWithExternalNameTable: %@", nameTable);
 
     NSIBObjectData *objectData;
@@ -177,22 +180,42 @@ NSString *const NSNibTopLevelObjects = @"NSNibTopLevelObjects";
         NSArray *topLevelObjects;
 
         if (_flags._isKeyed) {
-            NSKeyedUnarchiver *keyed;
-            unarchiver = keyed = [[[NSKeyedUnarchiver alloc]
-                    initForReadingWithData: _data] autorelease];
-            [keyed setDelegate: self];
+            if ([GSNibArchiveKeyedUnarchiver canReadData: _data]) {
+                GSNibArchiveKeyedUnarchiver *archive = [[[GSNibArchiveKeyedUnarchiver alloc]
+                        initForReadingWithData: _data] autorelease];
+                unarchiver = archive;
+                [archive setDelegate: self];
 
-            /*
-            TO DO:
-            - utf8 in the multinational panel
-            - misaligned objects in boxes everywhere
-            */
-            [keyed setClass: [NSTableCornerView class]
-                    forClassName: @"_NSCornerView"];
-            [keyed setClass: [NSNibHelpConnector class]
-                    forClassName: @"NSIBHelpConnector"];
+                [archive setClass: [NSTableCornerView class]
+                        forClassName: @"_NSCornerView"];
+                [archive setClass: [NSNibHelpConnector class]
+                        forClassName: @"NSIBHelpConnector"];
 
-            objectData = [keyed decodeObjectForKey: @"IB.objectdata"];
+                @try {
+                    objectData = [archive decodeObjectForKey: @"IB.objectdata"];
+                } @catch (NSException *e) {
+                    @throw e;
+                }
+                NSLog(@"[TRACE] NSNib: decode IB.objectdata -> %@", objectData);
+                fprintf(stderr, "[TRACE] NSNib: decode IB.objectdata -> %p\n", (void *) objectData);
+            } else {
+                NSKeyedUnarchiver *keyed;
+                unarchiver = keyed = [[[NSKeyedUnarchiver alloc]
+                        initForReadingWithData: _data] autorelease];
+                [keyed setDelegate: self];
+
+                /*
+                TO DO:
+                - utf8 in the multinational panel
+                - misaligned objects in boxes everywhere
+                */
+                [keyed setClass: [NSTableCornerView class]
+                        forClassName: @"_NSCornerView"];
+                [keyed setClass: [NSNibHelpConnector class]
+                        forClassName: @"NSIBHelpConnector"];
+
+                objectData = [keyed decodeObjectForKey: @"IB.objectdata"];
+            }
         } else {
             NSUnarchiver *unkeyed;
             unarchiver = unkeyed = [[[NSUnarchiver alloc]
@@ -207,6 +230,10 @@ NSString *const NSNibTopLevelObjects = @"NSNibTopLevelObjects";
         }
 
         [objectData buildConnectionsWithNameTable: _nameTable];
+        NSLog(@"[TRACE] NSNib: buildConnections done, mainMenu=%@ toplevel=%lu",
+                (id) [objectData mainMenu], (unsigned long) [[objectData topLevelObjects] count]);
+        fprintf(stderr, "[TRACE] NSNib: buildConnections done, toplevel=%lu\n",
+                (unsigned long) [[objectData topLevelObjects] count]);
         if ((menu = [objectData mainMenu]) != nil) {
             // Rename the first item to have the application name.
             if ([menu numberOfItems] > 0) {
@@ -256,6 +283,10 @@ NSString *const NSNibTopLevelObjects = @"NSNibTopLevelObjects";
         [[objectData visibleWindows]
                 makeObjectsPerformSelector: @selector(makeKeyAndOrderFront:)
                                 withObject: nil];
+        NSLog(@"[TRACE] NSNib: visibleWindows=%lu instantiate done",
+                (unsigned long) [[objectData visibleWindows] count]);
+        fprintf(stderr, "[TRACE] NSNib: visibleWindows=%lu instantiate done\n",
+                (unsigned long) [[objectData visibleWindows] count]);
 
         [_nameTable release];
         _nameTable = nil;

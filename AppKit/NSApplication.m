@@ -1628,6 +1628,7 @@ int NSApplicationMain(int argc, const char *argv[]) {
     __NSInitializeProcess(argc, argv);
 #endif
 
+    fprintf(stderr, "[TRACE] NSApplicationMain begin nib=?\n");
     NSAutoreleasePool *pool = [NSAutoreleasePool new];
     NSBundle *bundle = [NSBundle mainBundle];
     Class class = [bundle principalClass];

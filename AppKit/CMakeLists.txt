@@ -147,8 +147,8 @@ set(AppKit_sources
 	nib.subproj/NSNibControlConnector.m
 	nib.subproj/NSNibOutletConnector.m
 	nib.subproj/NSNib.m
-	nib.subproj/NSWindowTemplate.m
-	nib.subproj/NSMenuTemplate.m
+	nib.subproj/GSNibArchiveKeyedUnarchiver.m
+	nib.subproj/NSWindowTemplate.m	nib.subproj/NSMenuTemplate.m
 	nib.subproj/NSIBObjectData.m
 	nib.subproj/NSNibLoading.m
 	nib.subproj/NSClassSwapper.m

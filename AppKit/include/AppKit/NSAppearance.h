@@ -37,9 +37,23 @@ APPKIT_EXPORT NSString
 
 APPKIT_EXPORT NSString *const NSAppearanceNameControlStrip; // Undocumented
 
-@interface NSAppearance : NSObject <NSSecureCoding>
+@interface NSAppearance : NSObject <NSSecureCoding, NSCopying> {
+    NSAppearanceName _name;
+}
 
 + (NSAppearance *) appearanceNamed: (NSAppearanceName) name;
++ (NSAppearance *) currentAppearance;
++ (NSAppearance *) currentDrawingAppearance;
++ (NSAppearance *) effectiveAppearance;
++ (NSAppearanceName) bestMatchFromAppearancesWithNames:
+        (NSArray *) appearances;
+
+@property (readonly, copy) NSAppearanceName name;
+@property (readonly) BOOL allowsVibrancy;
+
+- (NSAppearanceName) bestMatchFromAppearancesWithNames:
+        (NSArray *) appearances;
+- (void) performAsCurrentDrawingAppearance: (void (^)(void)) block;
 
 @end
 
@@ -47,5 +61,6 @@ APPKIT_EXPORT NSString *const NSAppearanceNameControlStrip; // Undocumented
 
 @required
 @property (strong) NSAppearance *appearance;
+- (NSAppearance *) effectiveAppearance;
 
 @end

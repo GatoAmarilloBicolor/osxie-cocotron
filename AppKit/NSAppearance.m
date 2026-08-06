@@ -42,22 +42,106 @@ NSString *const NSAppearanceNameControlStrip =
 
 @implementation NSAppearance
 
+@synthesize name = _name;
+
+static NSAppearance *_currentAppearance = nil;
+
 + (NSAppearance *) appearanceNamed: (NSAppearanceName) name {
-    printf("STUB %s\n", __PRETTY_FUNCTION__);
-    return [NSAppearance alloc];
+    if (name == nil) {
+        name = NSAppearanceNameAqua;
+    }
+    NSAppearance *appearance = [[[NSAppearance alloc] init] autorelease];
+    appearance->_name = [name copy];
+    return appearance;
+}
++ (NSAppearance *) currentAppearance {
+    return [self appearanceNamed: NSAppearanceNameAqua];
 }
 
-- (void) encodeWithCoder: (NSCoder *) aCoder {
-    printf("STUB %s\n", __PRETTY_FUNCTION__);
++ (NSAppearance *) currentDrawingAppearance {
+    return [self currentAppearance];
 }
 
-- (id) initWithCoder: (NSCoder *) aDecoder {
-    printf("STUB %s\n", __PRETTY_FUNCTION__);
++ (NSAppearance *) effectiveAppearance {
+    return [self currentAppearance];
+}
+
++ (NSAppearanceName) bestMatchFromAppearancesWithNames:
+        (NSArray *) appearances
+{
+    if (appearances == nil || [appearances count] == 0) {
+        return NSAppearanceNameAqua;
+    }
+    for (NSString *name in appearances) {
+        if ([name isKindOfClass: [NSString class]]) {
+            return name;
+        }
+    }
+    return NSAppearanceNameAqua;
+}
+
+- (instancetype) init {
+    self = [super init];
+    if (self) {
+        _name = [NSAppearanceNameAqua copy];
+    }
     return self;
 }
 
-+ (BOOL) supportsSecureCoding
+- (void) dealloc {
+    [_name release];
+    [super dealloc];
+}
+
+- (NSAppearanceName) name {
+    return _name;
+}
+
+- (BOOL) allowsVibrancy {
+    return NO;
+}
+
+- (NSAppearanceName) bestMatchFromAppearancesWithNames:
+        (NSArray *) appearances
 {
+    if (appearances == nil || [appearances count] == 0) {
+        return [[_name copy] autorelease];
+    }
+    for (NSString *name in appearances) {
+        if ([name isKindOfClass: [NSString class]] &&
+            [name isEqualToString: _name]) {
+            return [[_name copy] autorelease];
+        }
+    }
+    return [appearances objectAtIndex: 0];
+}
+
+- (void) performAsCurrentDrawingAppearance: (void (^)(void)) block {
+    if (block != NULL) {
+        block();
+    }
+}
+
+- (void) encodeWithCoder: (NSCoder *) aCoder {
+    [aCoder encodeObject: _name forKey: @"NSAppearanceName"];
+}
+
+- (id) copyWithZone: (NSZone *) zone {
+    return [[[NSAppearance alloc] init] autorelease];
+}
+
+- (id) initWithCoder: (NSCoder *) aDecoder {
+    self = [super init];
+    if (self) {
+        _name = [[aDecoder decodeObjectForKey: @"NSAppearanceName"] copy];
+        if (_name == nil) {
+            _name = [NSAppearanceNameAqua copy];
+        }
+    }
+    return self;
+}
+
++ (BOOL) supportsSecureCoding {
     return YES;
 }
 

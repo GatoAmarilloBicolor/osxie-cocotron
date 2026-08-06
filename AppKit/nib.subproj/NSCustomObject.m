@@ -88,6 +88,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     Class class = NSClassFromString(_className);
     id ret = nil;
 
+    fprintf(stderr, "[TRACE] createCustomInstance class=%@ self=%p\n",
+            _className, self);
     if (class == Nil)
         NSLog(@"NSCustomObject unknown class %@", _className);
 
@@ -104,12 +106,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
         // like NSApplication and NSFontManager above... Perhaps that's more
         // explicit and it prevents the race condition - but seems quite high
         // maintenance
-    } else if (NSThreadSharedInstanceDoNotCreate(_className) != nil) {
+    } else if (class != Nil && NSThreadSharedInstanceDoNotCreate(_className) != nil) {
         ret = [NSThreadSharedInstanceDoNotCreate(_className) retain];
     } else {
         ret = [[class alloc] init];
     }
 
+    fprintf(stderr, "[TRACE] createCustomInstance -> %p\n", ret);
     return ret;
 }
 

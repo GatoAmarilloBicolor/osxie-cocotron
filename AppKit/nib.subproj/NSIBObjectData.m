@@ -104,6 +104,11 @@ NSString *const IBCocoaFramework = @"IBCocoaFramework";
         return nil;
     }
 
+    NSLog(@"[TRACE] NSIBObjectData initWithCoder: start (keyed=%d)",
+            [coder allowsKeyedCoding]);
+    fprintf(stderr, "[TRACE] NSIBObjectData initWithCoder: start keyed=%d\n",
+            [coder allowsKeyedCoding]);
+
     if ([coder allowsKeyedCoding]) {
         NSKeyedUnarchiver *keyed = (NSKeyedUnarchiver *) coder;
         NSMutableDictionary *nameTable = [NSMutableDictionary
@@ -129,7 +134,7 @@ NSString *const IBCocoaFramework = @"IBCocoaFramework";
                 [keyed replaceObject: nibObject withObject: external];
                 [_nameTable setObject: check forKey: external];
             } else if ([nibObject isKindOfClass: [NSCustomObject class]]) {
-                id replacement = [nibObject createCustomInstance];
+                id replacement = [(NSCustomObject *)nibObject createCustomInstance];
 
                 if (replacement == nil) {
                     [_nameTable setObject: check forKey: nibObject];
@@ -138,7 +143,7 @@ NSString *const IBCocoaFramework = @"IBCocoaFramework";
                     [_nameTable setObject: check forKey: replacement];
                     [replacement release];
                 }
-            } else {
+            } else if (nibObject != nil) {
                 [_nameTable setObject: check forKey: nibObject];
             }
         }
@@ -170,6 +175,9 @@ NSString *const IBCocoaFramework = @"IBCocoaFramework";
         NSArray *objectKeys = [keyed decodeObjectForKey: @"NSObjectsKeys"];
         NSArray *objectValues = [keyed decodeObjectForKey: @"NSObjectsValues"];
 
+        fprintf(stderr, "[TRACE] NSIBObjectData keys=%lu values=%lu\n",
+                (unsigned long) [objectKeys count], (unsigned long) [objectValues count]);
+
         // Replace any custom object with the real thing - and update anything
         // tracking them
         // NOTE(facekapow): i'm not really sure why this iterates backwards over the objects,
@@ -180,25 +188,45 @@ NSString *const IBCocoaFramework = @"IBCocoaFramework";
             id aValue = objectValues[i];
             id replacement = nil;
 
-            if (aValue == owner && [aKey isKindOfClass: [NSCustomObject class]]) {
-                replacement = [aKey createCustomInstance];
+            fprintf(stderr, "[TRACE] loop i=%lu key=%p val=%p\n",
+                    (unsigned long) i, aKey, aValue);
+
+            if (aKey == nil || aValue == nil) {
+                continue;
             }
 
-            if (replacement != nil) {
+            if (aValue == owner && [aKey isKindOfClass: [NSCustomObject class]]) {
+                fprintf(stderr, "[TRACE] loop i=%lu custom class=%@\n",
+                        (unsigned long) i, [(NSCustomObject *)aKey className]);
+                replacement = [(NSCustomObject *)aKey createCustomInstance];
+                fprintf(stderr, "[TRACE] loop i=%lu replacement=%p\n",
+                        (unsigned long) i, replacement);
+            }
+
+            if (replacement != nil && replacement != aValue) {
                 // Tell the decoder we are now using that - that will notify
                 // the Nib object
+                fprintf(stderr, "[TRACE] loop i=%lu A keyed-replace\n", (unsigned long) i);
                 [keyed replaceObject: aKey withObject: replacement];
                 // Update the connections
+                fprintf(stderr, "[TRACE] loop i=%lu B self-replace\n", (unsigned long) i);
                 [self replaceObject: aKey withObject: replacement];
 
+                fprintf(stderr, "[TRACE] loop i=%lu C table-set\n", (unsigned long) i);
                 [_objectTable setObject: aValue forKey: replacement];
+                fprintf(stderr, "[TRACE] loop i=%lu D release\n", (unsigned long) i);
                 [replacement release];
+                fprintf(stderr, "[TRACE] loop i=%lu D2 released ok\n", (unsigned long) i);
             } else {
+                fprintf(stderr, "[TRACE] loop i=%lu E table-only\n", (unsigned long) i);
                 [_objectTable setObject: aValue forKey: aKey];
             }
         }
 
+        fprintf(stderr, "[TRACE] loop done, before NSOidsKeys decode\n");
         NSArray *oidKeys = [keyed decodeObjectForKey: @"NSOidsKeys"];
+        fprintf(stderr, "[TRACE] NSOidsKeys decoded cnt=%lu\n",
+                (unsigned long) [oidKeys count]);
         NSArray *oidValues = [keyed decodeObjectForKey: @"NSOidsValues"];
 
         for (NSUInteger i = 0; i < oidKeys.count; ++i) {
@@ -400,6 +428,13 @@ NSString *const IBCocoaFramework = @"IBCocoaFramework";
             }
         }
     }
+
+    NSLog(@"[TRACE] NSIBObjectData initWithCoder: done, objects=%lu visible=%lu conns=%lu root=%@",
+            (unsigned long) [_objectTable count], (unsigned long) [_visibleWindows count],
+            (unsigned long) [_connections count], _fileOwner);
+    fprintf(stderr, "[TRACE] NSIBObjectData initWithCoder: done objects=%lu visible=%lu conns=%lu\n",
+            (unsigned long) [_objectTable count], (unsigned long) [_visibleWindows count],
+            (unsigned long) [_connections count]);
 
     return self;
 }

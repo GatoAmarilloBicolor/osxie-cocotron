@@ -18,6 +18,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <AppKit/NSGraphicsContext.h>
+#import <AppKit/NSButton.h>
 #import <AppKit/NSImage.h>
 #import <AppKit/NSMenu.h>
 #import <AppKit/NSPopUpWindow.h>
@@ -351,6 +352,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     _view = nil;
     _view = [view copy];
     // Start capture timer
+}
+
+- (NSButton *) button {
+    if (_button == nil) {
+        _button = [[NSButton alloc] initWithFrame: NSMakeRect(0, 0, 0, 0)];
+        [_button setButtonType: NSMomentaryLightButton];
+        [_button setTarget: _target];
+        [_button setAction: _action];
+    }
+
+    return _button;
 }
 
 - (BOOL) highlightMode {
