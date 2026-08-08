@@ -81,10 +81,28 @@ static NSMutableArray<NSString *> *_nibPaths(void) {
 
 + (BOOL) loadNibNamed: (NSString *) name owner: owner {
     NIBDEBUG(@"+ loadNibNamed: '%@'", name);
+    if (name == nil) {
+        return NO;
+    }
+    NSBundle *bundle = [NSBundle bundleForClass: [owner class]];
+    if (bundle == nil) {
+        bundle = [NSBundle mainBundle];
+    }
+    NSString *path = [bundle pathForResource: name ofType: @"nib"];
+    if (path == nil) {
+        path = [[NSBundle mainBundle] pathForResource: name ofType: @"nib"];
+    }
+    if (path == nil) {
+        // Try looking inside Contents/Resources/
+        path = [[bundle resourcePath] stringByAppendingPathComponent: [name stringByAppendingPathExtension: @"nib"]];
+    }
+    if (path == nil || ![[NSFileManager defaultManager] fileExistsAtPath: path]) {
+        NSLog(@"+ loadNibNamed: '%@' not found in bundle %@", name, bundle);
+        return NO;
+    }
 
     NSDictionary *nameTable = [NSDictionary dictionaryWithObject: owner
-                                                          forKey: NSNibOwner];
-    NSBundle *bundle = [NSBundle bundleForClass: [owner class]];
+                                                           forKey: NSNibOwner];
     return [bundle loadNibFile: name
              externalNameTable: nameTable
                       withZone: NSDefaultMallocZone()];

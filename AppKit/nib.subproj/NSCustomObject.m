@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <Foundation/NSException.h>
 #import <Foundation/NSKeyedArchiver.h>
 #import <Foundation/NSString.h>
+#import <objc/runtime.h>
 
 @implementation NSCustomObject
 
@@ -86,12 +87,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 - (id) createCustomInstance {
     Class class = NSClassFromString(_className);
+    id shared = NSThreadSharedInstanceDoNotCreate(_className);
     id ret = nil;
 
-    fprintf(stderr, "[TRACE] createCustomInstance class=%@ self=%p\n",
-            _className, self);
+    if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] createCustomInstance class=%@ clsPtr=%p clsName=%s shared=%p self=%p\n",
+            _className, (void *) class, (class != Nil) ? class_getName(class) : "(nil)",
+            (void *) shared, self);
     if (class == Nil)
         NSLog(@"NSCustomObject unknown class %@", _className);
+
+    if ([_className isEqualToString: @"@"]) {
+        // The '@' placeholder denotes the File's Owner. It is never a real
+        // ObjC class, so allocating an instance of it is meaningless (and the
+        // garbage lookup above would corrupt the heap). Resolve it to the app,
+        // which is the owner NSApplicationMain uses when loading the nib.
+        return [[NSApplication sharedApplication] retain];
+    }
 
     if ([_className isEqualToString: @"NSApplication"]) {
         ret = [[NSApplication sharedApplication] retain];
@@ -112,7 +123,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
         ret = [[class alloc] init];
     }
 
-    fprintf(stderr, "[TRACE] createCustomInstance -> %p\n", ret);
+    if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] createCustomInstance -> %p\n", ret);
     return ret;
 }
 

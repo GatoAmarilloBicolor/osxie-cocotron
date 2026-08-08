@@ -166,11 +166,19 @@ GSReadVarInt(const uint8_t *bytes, NSUInteger length, NSUInteger *offset,
     _classNameMap = [[NSMutableDictionary alloc] init];
     _objectStack = [[NSMutableArray alloc] init];
     _cursorStack = [[NSMutableArray alloc] init];
+    _savedClassNames = [[NSMutableArray alloc] init];
 
     if ([self _parseData: data] == NO) {
         [self release];
         return nil;
     }
+
+    if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] unarchiver parsed: archiveObjects=%p(%lu/%lu) classNames=%p(%lu/%lu) decoded=%p values=%p keys=%p\n",
+        (void *) _archiveObjects, (unsigned long) [_archiveObjects count],
+        (unsigned long) _parsedObjectCount,
+        (void *) _classNames, (unsigned long) [_classNames count],
+        (unsigned long) _parsedClassNameCount,
+        (void *) _decodedObjects, (void *) _values, (void *) _keys);
 
     return self;
 }
@@ -185,6 +193,7 @@ GSReadVarInt(const uint8_t *bytes, NSUInteger length, NSUInteger *offset,
     [_classNameMap release];
     [_objectStack release];
     [_cursorStack release];
+    [_savedClassNames release];
     [super dealloc];
 }
 
@@ -258,6 +267,9 @@ GSReadVarInt(const uint8_t *bytes, NSUInteger length, NSUInteger *offset,
     offsetValues = GSReadLE32(_archiveBytes + 38);
     classNameCount = GSReadLE32(_archiveBytes + 42);
     offsetClassNames = GSReadLE32(_archiveBytes + 46);
+
+    _parsedObjectCount = objectCount;
+    _parsedClassNameCount = classNameCount;
 
     if (offsetObjects > _length || offsetKeys > _length
       || offsetValues > _length || offsetClassNames > _length) {
@@ -454,6 +466,7 @@ GSReadVarInt(const uint8_t *bytes, NSUInteger length, NSUInteger *offset,
         }
         className->fallbackClassIndexes = [fallbacks retain];
         [_classNames addObject: className];
+        [_savedClassNames addObject: [NSValue valueWithPointer: className]];
         [className release];
         offset += stringLength;
     }
@@ -510,15 +523,39 @@ GSReadVarInt(const uint8_t *bytes, NSUInteger length, NSUInteger *offset,
 }
 
 - (Class) _classForArchiveClassName: (GSNibArchiveClassName *)archiveClass {
-    Class class = [self classForClassName: archiveClass->name];
+    Class class = Nil;
+    
+    // Issue #2: Ensure main bundle and loaded bundles are loaded/initialized before class lookup
+    [[NSBundle mainBundle] load];
 
-    if (class == Nil) {
-        class = [[self class] classForClassName: archiveClass->name];
+    if (archiveClass != nil && archiveClass->name != nil) {
+        class = [self classForClassName: archiveClass->name];
+
+        if (class == Nil) {
+            class = [[self class] classForClassName: archiveClass->name];
+        }
+        if (class == Nil) {
+            class = NSClassFromString(archiveClass->name);
+        }
+        // Fallback: search all loaded classes in runtime if not found
+        if (class == Nil) {
+            int numClasses = objc_getClassList(NULL, 0);
+            if (numClasses > 0) {
+                Class *classes = (Class *)malloc(sizeof(Class) * numClasses);
+                numClasses = objc_getClassList(classes, numClasses);
+                for (int i = 0; i < numClasses; i++) {
+                    const char *className = class_getName(classes[i]);
+                    if (className && [archiveClass->name isEqualToString: [NSString stringWithUTF8String: className]]) {
+                        class = classes[i];
+                        break;
+                    }
+                }
+                free(classes);
+            }
+        }
     }
-    if (class == Nil) {
-        class = NSClassFromString(archiveClass->name);
-    }
-    if (class == Nil) {
+
+    if (class == Nil && archiveClass != nil) {
         NSEnumerator *enumerator = [archiveClass->fallbackClassIndexes objectEnumerator];
         NSNumber *fallbackIndex;
 
@@ -532,8 +569,13 @@ GSReadVarInt(const uint8_t *bytes, NSUInteger length, NSUInteger *offset,
       && [_archiveDelegate respondsToSelector:
         @selector(unarchiver:cannotDecodeObjectOfClassName:originalClasses:)]) {
         class = [_archiveDelegate unarchiver: self
-         cannotDecodeObjectOfClassName: archiveClass->name
+         cannotDecodeObjectOfClassName: (archiveClass != nil ? archiveClass->name : @"Unknown")
                         originalClasses: nil];
+    }
+
+    if (class == Nil) {
+        NSLog(@"[GSNibArchive] Warning: Unable to resolve class '%@', falling back to NSObject placeholder", (archiveClass != nil ? archiveClass->name : @"Unknown"));
+        class = [NSObject class];
     }
 
     return class;
@@ -556,8 +598,13 @@ GSReadVarInt(const uint8_t *bytes, NSUInteger length, NSUInteger *offset,
 }
 
 - (id) _decodeObjectAtIndex: (NSUInteger)index {
+    if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] _decodeObjectAtIndex enter idx=%lu parsedObjs=%lu archiveObjs=%lu classes=%lu\n",
+            (unsigned long) index, (unsigned long) _parsedObjectCount,
+            (unsigned long) [_archiveObjects count], (unsigned long) [_classNames count]);
     NSNumber *key = [NSNumber numberWithUnsignedInteger: index];
+    if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] _d step1 key=%p\n", (void *) key);
     id object = [_decodedObjects objectForKey: key];
+    if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] _d step2 cached=%p\n", (void *) object);
     GSNibArchiveObject *archiveObject;
     GSNibArchiveClassName *archiveClass;
     Class class;
@@ -568,12 +615,33 @@ GSReadVarInt(const uint8_t *bytes, NSUInteger length, NSUInteger *offset,
     }
 
     archiveObject = [_archiveObjects objectAtIndex: index];
-    archiveClass = [_classNames objectAtIndex: archiveObject->classNameIndex];
-    fprintf(stderr, "[TRACE] decodeIdx %lu classIndex=%d className=%@ objCount=%lu clsCount=%lu stack=%lu\n",
-            (unsigned long) index, archiveObject->classNameIndex,
-            archiveClass->name, (unsigned long) [_archiveObjects count],
-            (unsigned long) [_classNames count],
-            (unsigned long) [_objectStack count]);
+    if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] _d step3 archiveObject=%p clsIdx=%d\n", (void *) archiveObject, (int) archiveObject->classNameIndex);
+    if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] _decodeObjectAtIndex got archiveObject=%p\n", (void *) archiveObject);
+    NSInteger clsIdx = archiveObject->classNameIndex;
+    if (clsIdx < 0 || (NSUInteger)clsIdx >= [_classNames count]) {
+        if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] ** FATAL: invalid classNameIndex %ld at object index %lu\n", (long)clsIdx, (unsigned long)index);
+        return nil;
+    }
+    archiveClass = [_classNames objectAtIndex: clsIdx];
+    if ([_archiveObjects count] != _parsedObjectCount
+      || [_classNames count] != _parsedClassNameCount
+      || archiveClass->name == nil
+      || ![(id) archiveClass->name respondsToSelector: @selector(length)]
+      || [(NSString *) archiveClass->name length] > 4096) {
+        if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] ** CORRUPT idx=%lu classIndex=%d name=%p objCount=%lu/%lu clsCount=%lu/%lu\n",
+            (unsigned long) index, (int) archiveObject->classNameIndex,
+            (void *) archiveClass->name,
+            (unsigned long) [_archiveObjects count], (unsigned long) _parsedObjectCount,
+            (unsigned long) [_classNames count], (unsigned long) _parsedClassNameCount);
+    }
+    {
+        NSValue *saved = [_savedClassNames objectAtIndex: archiveObject->classNameIndex];
+        void *savedPtr = (saved != nil) ? [saved pointerValue] : NULL;
+        if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] decodeIdx %lu classIndex=%d archiveClass=%p saved=%p name=%p fb=%p\n",
+            (unsigned long) index, (int) archiveObject->classNameIndex,
+            (void *) archiveClass, savedPtr, (void *) archiveClass->name,
+            (void *) archiveClass->fallbackClassIndexes);
+    }
     class = [self _classForArchiveClassName: archiveClass];
     if (class == Nil) {
         [NSException raise: NSInvalidUnarchiveOperationException
@@ -583,6 +651,26 @@ GSReadVarInt(const uint8_t *bytes, NSUInteger length, NSUInteger *offset,
     }
 
     object = [class allocWithZone: _objectZone];
+
+    // Some classes (NSNumber, NSValue, NSString, NSData, NSTimer, ...)
+    // override +allocWithZone: to return a single SHARED placeholder
+    // instance.  The placeholder is owned by nobody: its retain count of 1
+    // is the "creation" retain, and the alloc " +1" that callers normally
+    // receive is virtual.  Sending it an extra -release below would free the
+    // shared singleton, so the next +[NSNumber alloc] would hand out the
+    // dead placeholder (garbage isa -> crash while dispatching initWithCoder:).
+    // Detect the shared instance by asking the class for another alloc
+    // result and comparing pointers; the probe is itself balanced by a
+    // matching -release when it is NOT the shared singleton.
+    BOOL sharedPlaceholder = NO;
+    {
+        id probe = [class allocWithZone: _objectZone];
+        sharedPlaceholder = (probe == object);
+        if (!sharedPlaceholder) {
+            [probe release];
+        }
+    }
+
     [_decodedObjects setObject: object forKey: key];
     [_objectStack addObject: archiveObject];
     [_cursorStack addObject: [NSNumber numberWithUnsignedInteger: 0]];
@@ -604,7 +692,9 @@ GSReadVarInt(const uint8_t *bytes, NSUInteger length, NSUInteger *offset,
 
     if (result != object) {
         [self _replaceObjectAtIndex: index withObject: result];
-        [object release];
+        if (!sharedPlaceholder) {
+            [object release];
+        }
         object = [result retain];
     }
 
@@ -612,7 +702,9 @@ GSReadVarInt(const uint8_t *bytes, NSUInteger length, NSUInteger *offset,
         result = [object awakeAfterUsingCoder: self];
         if (result != object) {
             [self _replaceObjectAtIndex: index withObject: result];
-            [object release];
+            if (!sharedPlaceholder) {
+                [object release];
+            }
             object = [result retain];
         }
     }
@@ -623,7 +715,9 @@ GSReadVarInt(const uint8_t *bytes, NSUInteger length, NSUInteger *offset,
         result = [_archiveDelegate unarchiver: self didDecodeObject: object];
         if (result != object) {
             [self _replaceObjectAtIndex: index withObject: result];
-            [object release];
+            if (!sharedPlaceholder) {
+                [object release];
+            }
             object = [result retain];
         }
     }
@@ -652,7 +746,7 @@ GSReadVarInt(const uint8_t *bytes, NSUInteger length, NSUInteger *offset,
     }
 
     if (value->type == GSNibArchiveTypeObjectRef) {
-        fprintf(stderr, "[TRACE] objref -> %lu\n", (unsigned long) value->reference);
+        if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] objref -> %lu\n", (unsigned long) value->reference);
         return [self _decodeObjectAtIndex: value->reference];
     }
     if (value->type == GSNibArchiveTypeNil) {
@@ -680,7 +774,7 @@ GSReadVarInt(const uint8_t *bytes, NSUInteger length, NSUInteger *offset,
       && ![key isEqualToString: @"NS.objects"]
       && ![key isEqualToString: @"NS.keys"]
       && ![key isEqualToString: @"NS.classes"]) {
-        NSLog(@"[TRACE] decodeObjectForKey: %@ stack=%lu", key, (unsigned long)[_objectStack count]);
+        if (getenv("OSXIE_TRACE_NIB")) NSLog(@"[TRACE] decodeObjectForKey: %@ stack=%lu", key, (unsigned long)[_objectStack count]);
     }
     if ([self _currentObject] == nil
       && ([key isEqual: @"IB.objectdata"] || [key isEqual: @"root"])) {

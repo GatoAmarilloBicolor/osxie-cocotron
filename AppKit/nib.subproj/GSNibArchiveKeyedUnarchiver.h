@@ -34,6 +34,9 @@
     NSMutableArray *_cursorStack;
     id _archiveDelegate;
     NSZone *_objectZone;
+    NSUInteger _parsedObjectCount;
+    NSUInteger _parsedClassNameCount;
+    NSMutableArray *_savedClassNames;
 }
 
 + (BOOL) canReadData: (NSData *)data;

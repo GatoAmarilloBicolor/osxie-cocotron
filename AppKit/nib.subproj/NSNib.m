@@ -166,7 +166,7 @@ NSString *const NSNibTopLevelObjects = @"NSNibTopLevelObjects";
 
 - (BOOL) instantiateNibWithExternalNameTable: (NSDictionary *) nameTable {
 
-    fprintf(stderr, "[TRACE] NSNib instantiateNibWithExternalNameTable: begin\n");
+    if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] NSNib instantiateNibWithExternalNameTable: begin\n");
 
     NIBDEBUG(@"instantiateNibWithExternalNameTable: %@", nameTable);
 
@@ -196,8 +196,8 @@ NSString *const NSNibTopLevelObjects = @"NSNibTopLevelObjects";
                 } @catch (NSException *e) {
                     @throw e;
                 }
-                NSLog(@"[TRACE] NSNib: decode IB.objectdata -> %@", objectData);
-                fprintf(stderr, "[TRACE] NSNib: decode IB.objectdata -> %p\n", (void *) objectData);
+                if (getenv("OSXIE_TRACE_NIB")) NSLog(@"[TRACE] NSNib: decode IB.objectdata -> %@", objectData);
+                if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] NSNib: decode IB.objectdata -> %p\n", (void *) objectData);
             } else {
                 NSKeyedUnarchiver *keyed;
                 unarchiver = keyed = [[[NSKeyedUnarchiver alloc]
@@ -230,9 +230,9 @@ NSString *const NSNibTopLevelObjects = @"NSNibTopLevelObjects";
         }
 
         [objectData buildConnectionsWithNameTable: _nameTable];
-        NSLog(@"[TRACE] NSNib: buildConnections done, mainMenu=%@ toplevel=%lu",
+        if (getenv("OSXIE_TRACE_NIB")) NSLog(@"[TRACE] NSNib: buildConnections done, mainMenu=%@ toplevel=%lu",
                 (id) [objectData mainMenu], (unsigned long) [[objectData topLevelObjects] count]);
-        fprintf(stderr, "[TRACE] NSNib: buildConnections done, toplevel=%lu\n",
+        if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] NSNib: buildConnections done, toplevel=%lu\n",
                 (unsigned long) [[objectData topLevelObjects] count]);
         if ((menu = [objectData mainMenu]) != nil) {
             // Rename the first item to have the application name.
@@ -283,9 +283,9 @@ NSString *const NSNibTopLevelObjects = @"NSNibTopLevelObjects";
         [[objectData visibleWindows]
                 makeObjectsPerformSelector: @selector(makeKeyAndOrderFront:)
                                 withObject: nil];
-        NSLog(@"[TRACE] NSNib: visibleWindows=%lu instantiate done",
+        if (getenv("OSXIE_TRACE_NIB")) NSLog(@"[TRACE] NSNib: visibleWindows=%lu instantiate done",
                 (unsigned long) [[objectData visibleWindows] count]);
-        fprintf(stderr, "[TRACE] NSNib: visibleWindows=%lu instantiate done\n",
+        if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] NSNib: visibleWindows=%lu instantiate done\n",
                 (unsigned long) [[objectData visibleWindows] count]);
 
         [_nameTable release];

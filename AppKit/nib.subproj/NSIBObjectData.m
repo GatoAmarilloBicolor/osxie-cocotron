@@ -28,6 +28,8 @@
 #import <AppKit/NSNibConnector.h>
 #import <Foundation/NSArray.h>
 #import <Foundation/NSDebug.h>
+#import <stdio.h>
+#import <objc/runtime.h>
 #import <Foundation/NSIndexSet.h>
 #import <Foundation/NSKeyedArchiver.h>
 #import <Foundation/NSKeyedUnarchiver.h>
@@ -104,9 +106,9 @@ NSString *const IBCocoaFramework = @"IBCocoaFramework";
         return nil;
     }
 
-    NSLog(@"[TRACE] NSIBObjectData initWithCoder: start (keyed=%d)",
+    if (getenv("OSXIE_TRACE_NIB")) NSLog(@"[TRACE] NSIBObjectData initWithCoder: start (keyed=%d)",
             [coder allowsKeyedCoding]);
-    fprintf(stderr, "[TRACE] NSIBObjectData initWithCoder: start keyed=%d\n",
+    if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] NSIBObjectData initWithCoder: start keyed=%d\n",
             [coder allowsKeyedCoding]);
 
     if ([coder allowsKeyedCoding]) {
@@ -175,7 +177,7 @@ NSString *const IBCocoaFramework = @"IBCocoaFramework";
         NSArray *objectKeys = [keyed decodeObjectForKey: @"NSObjectsKeys"];
         NSArray *objectValues = [keyed decodeObjectForKey: @"NSObjectsValues"];
 
-        fprintf(stderr, "[TRACE] NSIBObjectData keys=%lu values=%lu\n",
+        if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] NSIBObjectData keys=%lu values=%lu\n",
                 (unsigned long) [objectKeys count], (unsigned long) [objectValues count]);
 
         // Replace any custom object with the real thing - and update anything
@@ -188,7 +190,7 @@ NSString *const IBCocoaFramework = @"IBCocoaFramework";
             id aValue = objectValues[i];
             id replacement = nil;
 
-            fprintf(stderr, "[TRACE] loop i=%lu key=%p val=%p\n",
+            if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] loop i=%lu key=%p val=%p\n",
                     (unsigned long) i, aKey, aValue);
 
             if (aKey == nil || aValue == nil) {
@@ -196,36 +198,46 @@ NSString *const IBCocoaFramework = @"IBCocoaFramework";
             }
 
             if (aValue == owner && [aKey isKindOfClass: [NSCustomObject class]]) {
-                fprintf(stderr, "[TRACE] loop i=%lu custom class=%@\n",
-                        (unsigned long) i, [(NSCustomObject *)aKey className]);
-                replacement = [(NSCustomObject *)aKey createCustomInstance];
-                fprintf(stderr, "[TRACE] loop i=%lu replacement=%p\n",
+                NSString *clsName = [(NSCustomObject *)aKey className];
+                if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] loop i=%lu custom class=%@\n",
+                        (unsigned long) i, clsName);
+                if ([clsName isEqualToString: @"@"]) {
+                    // The '@' placeholder is the File's Owner: it must resolve
+                    // to the owner itself, never to a freshly-allocated
+                    // instance (NSClassFromString('@') is not a real class).
+                    if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] loop i=%lu @-placeholder -> owner\n",
+                            (unsigned long) i);
+                    replacement = owner;
+                } else {
+                    replacement = [(NSCustomObject *)aKey createCustomInstance];
+                }
+                if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] loop i=%lu replacement=%p\n",
                         (unsigned long) i, replacement);
             }
 
             if (replacement != nil && replacement != aValue) {
                 // Tell the decoder we are now using that - that will notify
                 // the Nib object
-                fprintf(stderr, "[TRACE] loop i=%lu A keyed-replace\n", (unsigned long) i);
+                if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] loop i=%lu A keyed-replace\n", (unsigned long) i);
                 [keyed replaceObject: aKey withObject: replacement];
                 // Update the connections
-                fprintf(stderr, "[TRACE] loop i=%lu B self-replace\n", (unsigned long) i);
+                if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] loop i=%lu B self-replace\n", (unsigned long) i);
                 [self replaceObject: aKey withObject: replacement];
 
-                fprintf(stderr, "[TRACE] loop i=%lu C table-set\n", (unsigned long) i);
+                if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] loop i=%lu C table-set\n", (unsigned long) i);
                 [_objectTable setObject: aValue forKey: replacement];
-                fprintf(stderr, "[TRACE] loop i=%lu D release\n", (unsigned long) i);
+                if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] loop i=%lu D release\n", (unsigned long) i);
                 [replacement release];
-                fprintf(stderr, "[TRACE] loop i=%lu D2 released ok\n", (unsigned long) i);
+                if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] loop i=%lu D2 released ok\n", (unsigned long) i);
             } else {
-                fprintf(stderr, "[TRACE] loop i=%lu E table-only\n", (unsigned long) i);
+                if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] loop i=%lu E table-only\n", (unsigned long) i);
                 [_objectTable setObject: aValue forKey: aKey];
             }
         }
 
-        fprintf(stderr, "[TRACE] loop done, before NSOidsKeys decode\n");
+        if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] loop done, before NSOidsKeys decode\n");
         NSArray *oidKeys = [keyed decodeObjectForKey: @"NSOidsKeys"];
-        fprintf(stderr, "[TRACE] NSOidsKeys decoded cnt=%lu\n",
+        if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] NSOidsKeys decoded cnt=%lu\n",
                 (unsigned long) [oidKeys count]);
         NSArray *oidValues = [keyed decodeObjectForKey: @"NSOidsValues"];
 
@@ -234,8 +246,13 @@ NSString *const IBCocoaFramework = @"IBCocoaFramework";
             NSMapInsert(_oidTable, oidKeys[i], (const void *)((NSNumber *)oidValues[i]).integerValue);
         }
 
-        NSArray *accessibilityOidKeys = [keyed decodeObjectForKey: @"NSAccessibilityOidsKeys"];
-        NSArray *accessibilityOidValues = [keyed decodeObjectForKey: @"NSAccessibilityOidsValues"];
+        // WORKAROUND: decoding NSAccessibilityOidsKeys/Values (objs 160-181)
+        // nondeterministically corrupts the unarchiver's own object table
+        // (garbage isa in _archiveObjects) and segfaults. Accessibility OIDs
+        // are pure metadata; skip them.
+        if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] accessibility OIDs SKIPPED (workaround)\n");
+        NSArray *accessibilityOidKeys = nil;
+        NSArray *accessibilityOidValues = nil;
 
         for (NSUInteger i = 0; i < accessibilityOidKeys.count; ++i) {
             // accessibility OIDs don't override normal OIDs
@@ -429,10 +446,10 @@ NSString *const IBCocoaFramework = @"IBCocoaFramework";
         }
     }
 
-    NSLog(@"[TRACE] NSIBObjectData initWithCoder: done, objects=%lu visible=%lu conns=%lu root=%@",
+    if (getenv("OSXIE_TRACE_NIB")) NSLog(@"[TRACE] NSIBObjectData initWithCoder: done, objects=%lu visible=%lu conns=%lu root=%@",
             (unsigned long) [_objectTable count], (unsigned long) [_visibleWindows count],
             (unsigned long) [_connections count], _fileOwner);
-    fprintf(stderr, "[TRACE] NSIBObjectData initWithCoder: done objects=%lu visible=%lu conns=%lu\n",
+    if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] NSIBObjectData initWithCoder: done objects=%lu visible=%lu conns=%lu\n",
             (unsigned long) [_objectTable count], (unsigned long) [_visibleWindows count],
             (unsigned long) [_connections count]);
 
@@ -572,11 +589,23 @@ NSString *const IBCocoaFramework = @"IBCocoaFramework";
     int i, count = [_connections count];
 
     for (i = 0; i < count; i++) {
+        id conn = [_connections objectAtIndex: i];
+        if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] NSIBObjectData establishConnections[%d/%d]: conn=%p class=%s\n",
+                i, count, (void *) conn, object_getClassName(conn));
+        fflush(stderr);
+        if (conn == nil || ![conn isKindOfClass: [NSObject class]] ||
+            ![conn respondsToSelector: @selector(establishConnection)]) {
+            NSLog(@"[NSIBObjectData] Warning: skipping invalid connector #%d (class %s)",
+                  i, conn ? object_getClassName(conn) : "nil");
+            continue;
+        }
         NS_DURING[[_connections objectAtIndex: i] establishConnection];
         NS_HANDLER
         if (NSDebugEnabled)
             NSLog(@"Exception during -establishConnection %@", localException);
         NS_ENDHANDLER
+        if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] NSIBObjectData establishConnections[%d/%d]: done\n", i, count);
+        fflush(stderr);
     }
 }
 

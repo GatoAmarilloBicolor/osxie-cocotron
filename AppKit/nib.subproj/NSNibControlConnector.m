@@ -23,6 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 @implementation NSNibControlConnector
 
 - (void) establishConnection {
+    if (_source == nil || _destination == nil || _label == nil) {
+        NSLog(@"[NSNibControlConnector] Warning: skipping connection with nil source (%p), destination (%p), or label (%p)", _source, _destination, _label);
+        return;
+    }
+
     NSString *selectorName = _label;
     NSUInteger length = [selectorName length];
     SEL selector;
@@ -32,27 +37,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
     selector = NSSelectorFromString(selectorName);
 
-    if (selector == NULL)
-        [NSException
-                 raise: NSInvalidArgumentException
-                format: @"-[%@ %s] selector %@ does not exist:", [self class],
-                        sel_getName(_cmd), selectorName];
-
-    if ([_source respondsToSelector: @selector(setAction:)])
-        [_source setAction: selector];
-    else {
-        [NSException raise: NSInvalidArgumentException
-                    format: @"-[%@ %s] _source does not respond to setAction:",
-                            [self class], sel_getName(_cmd)];
+    if (selector == NULL) {
+        NSLog(@"[NSNibControlConnector] Warning: selector %@ could not be created", selectorName);
+        return;
     }
 
-    if ([_source respondsToSelector: @selector(setTarget:)])
-        [_source performSelector: @selector(setTarget:)
-                      withObject: _destination];
-    else {
-        [NSException raise: NSInvalidArgumentException
-                    format: @"-[%@ %s] _source does not respond to setTarget:",
-                            [self class], sel_getName(_cmd)];
+    @try {
+        if ([_source respondsToSelector: @selector(setAction:)])
+            [_source setAction: selector];
+        
+        if ([_source respondsToSelector: @selector(setTarget:)])
+            [_source performSelector: @selector(setTarget:)
+                          withObject: _destination];
+    } @catch (NSException *e) {
+        NSLog(@"[NSNibControlConnector] Exception establishing action connection '%@': %@", _label, [e reason]);
     }
 }
 

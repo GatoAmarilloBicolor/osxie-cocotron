@@ -23,19 +23,38 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 @implementation NSNibOutletConnector
 
 - (void) establishConnection {
+    if (_source == nil || _destination == nil || _label == nil) {
+        NSLog(@"[NSNibOutletConnector] Warning: skipping connection with nil source (%p), destination (%p), or label (%p)", _source, _destination, _label);
+        return;
+    }
+
     NSString *methodName = [NSString
             stringWithFormat: @"set%@%@:",
                               [[_label substringToIndex: 1] uppercaseString],
                               [_label substringFromIndex: 1]];
     SEL selector = NSSelectorFromString(methodName);
 
-    if (selector != NULL)
-        if ([_source respondsToSelector: selector]) {
+    if (selector != NULL && [_source respondsToSelector: selector]) {
+        @try {
             [_source performSelector: selector withObject: _destination];
             return;
+        } @catch (NSException *e) {
+            NSLog(@"[NSNibOutletConnector] Exception establishing outlet '%@' on %@: %@", _label, NSStringFromClass([_source class]), [e reason]);
+            return;
         }
+    }
 
-    object_setInstanceVariable(_source, [_label UTF8String], _destination);
+    @try {
+        Ivar ivar = class_getInstanceVariable(object_getClass(_source), [_label UTF8String]);
+        if (ivar != NULL) {
+            object_setInstanceVariable(_source, [_label UTF8String], _destination);
+        } else {
+            NSLog(@"[NSNibOutletConnector] Audit Warning: object %@ (%p) does not respond to setter %@ and has no ivar '%@' (destination: %@ %p)", 
+                NSStringFromClass([_source class]), _source, methodName, _label, NSStringFromClass([_destination class]), _destination);
+        }
+    } @catch (NSException *e) {
+        NSLog(@"[NSNibOutletConnector] Exception setting ivar '%@' on %@: %@", _label, NSStringFromClass([_source class]), [e reason]);
+    }
 }
 
 @end

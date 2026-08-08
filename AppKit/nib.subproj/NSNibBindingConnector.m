@@ -18,6 +18,8 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import "NSNibBindingConnector.h"
 #import <AppKit/NSObject+BindingSupport.h>
+#import <stdio.h>
+#import <objc/runtime.h>
 
 @implementation NSNibBindingConnector
 - (void) dealloc {
@@ -47,12 +49,47 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (void) establishConnection {
-    // NSLog(@"binding between %@.%@ and %@.%@ options=%@", [_source className],
-    // _binding, [_destination className], _keyPath,_options);
+    if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] NSNibBindingConnector: enter binding=%@ src=%p(%s) dst=%p(%s) keyPath=%@\n",
+            _binding, (void *)_source, _source?object_getClassName(_source):"nil",
+            (void *)_destination, _destination?object_getClassName(_destination):"nil", _keyPath);
+    fflush(stderr);
 
-    [_source bind: _binding
-               toObject: _destination
-            withKeyPath: _keyPath
-                options: _options];
+    if (_source == nil || _destination == nil || _binding == nil || _keyPath == nil) {
+        NSLog(@"[NSNibBindingConnector] Warning: skipping binding with nil source/destination/binding/keyPath");
+        return;
+    }
+
+    // A SEGV here is not catchable; we must never touch a non-object or a
+    // placeholder whose class didn't resolve. Validate both endpoints are
+    // real NSObjects before doing anything.
+    if (![_source isKindOfClass: [NSObject class]] ||
+        ![_destination isKindOfClass: [NSObject class]]) {
+        NSLog(@"[NSNibBindingConnector] Warning: source/destination is not a valid NSObject; skipping binding %@ between %@ and %@",
+              _binding, object_getClassName(_source), object_getClassName(_destination));
+        return;
+    }
+    if (![_source respondsToSelector: @selector(bind:toObject:withKeyPath:options:)]) {
+        NSLog(@"[NSNibBindingConnector] Warning: source %@ does not implement bind:toObject:withKeyPath:options:; skipping binding %@",
+              object_getClassName(_source), _binding);
+        return;
+    }
+    if (![_destination respondsToSelector: @selector(valueForKey:)]) {
+        NSLog(@"[NSNibBindingConnector] Warning: destination %@ does not implement valueForKey:; skipping binding %@",
+              object_getClassName(_destination), _binding);
+        return;
+    }
+
+    if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] NSNibBindingConnector: calling bind:\n");
+    fflush(stderr);
+    @try {
+        [_source bind: _binding
+                   toObject: _destination
+                withKeyPath: _keyPath
+                    options: _options];
+        if (getenv("OSXIE_TRACE_NIB")) fprintf(stderr, "[TRACE] NSNibBindingConnector: bind: returned\n");
+        fflush(stderr);
+    } @catch (NSException *e) {
+        NSLog(@"[NSNibBindingConnector] Exception establishing binding '%@': %@", _binding, [e reason]);
+    }
 }
 @end
