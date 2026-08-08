@@ -1,7 +1,10 @@
 #import <Onyx2D/O2Context_builtin_FT.h>
 #import <Onyx2D/O2Font_freetype.h>
 #import <Onyx2D/O2GraphicsState.h>
+#import <Onyx2D/O2Image.h>
 #import <Onyx2D/O2Paint_color.h>
+#import <Onyx2D/O2Surface.h>
+#import <string.h>
 
 @implementation O2Context (O2BitmapContext)
 
@@ -242,6 +245,130 @@ static void renderFreeTypeBitmap(O2Context_builtin_FT *self, O2Surface *surface,
     total = (total / O2FontGetUnitsPerEm(font)) * gState->_pointSize;
 
     O2SurfaceUnlock(_surface);
+}
+
+// Copies the context's surface pixels inside `rect` (user space) into a
+// 32bpp BMP so the caller (NSBitmapImageRep -initWithFocusedViewRect:) can
+// build an image from them. Mirrors the Windows implementation.
+- (NSData *) captureBitmapInRect: (NSRect) rect {
+    O2Surface *surface = [self surface];
+    size_t surfaceWidth = O2SurfaceGetWidth(surface);
+    size_t surfaceHeight = O2SurfaceGetHeight(surface);
+
+    O2AffineTransform transformToDevice =
+            O2ContextGetUserSpaceToDeviceSpaceTransform(self);
+    NSPoint pt = O2PointApplyAffineTransform(rect.origin, transformToDevice);
+
+    int width = (int) rect.size.width;
+    int height = (int) rect.size.height;
+
+    if (width <= 0 || height <= 0)
+        return nil;
+
+    if (transformToDevice.d < 0) // flipped (user y up, device y down)
+        pt.y -= rect.size.height;
+
+    int startX = (int) pt.x;
+    int startY = (int) pt.y;
+
+    // Clamp to the surface
+    if (startX < 0) {
+        width += startX;
+        startX = 0;
+    }
+    if (startY < 0) {
+        height += startY;
+        startY = 0;
+    }
+    if (startX + width > (int) surfaceWidth)
+        width = (int) surfaceWidth - startX;
+    if (startY + height > (int) surfaceHeight)
+        height = (int) surfaceHeight - startY;
+
+    if (width <= 0 || height <= 0)
+        return nil;
+
+    static int dbgCount = 0;
+    if (dbgCount++ < 4) {
+        // histogram of the captured region
+        O2argb8u tmp;
+        int hits[256] = {0};
+        int distinct = 0;
+        for (int y = startY; y < startY + height; y++) {
+            O2argb8u *row =
+                    O2Image_read_argb8u(surface, startX, y, &tmp, 1);
+            for (int x = 0; x < width; x++) {
+                O2argb8u p = row[x];
+                if (p.a == 0) {
+                    distinct++;
+                    break;
+                }
+                int key = (p.r >> 4) + (p.g >> 4) + (p.b >> 4);
+                hits[key]++;
+            }
+        }
+        fprintf(stderr, "[TRACE] captureBitmap rect=(%.0f,%.0f,%.0f,%.0f) "
+                        "pt=(%.0f,%.0f) d=%.2f start=(%d,%d) size=(%dx%d) "
+                        "surf=(%zux%zu) opaqueRows=%d\n",
+                rect.origin.x, rect.origin.y, rect.size.width,
+                rect.size.height, pt.x, pt.y, transformToDevice.d, startX,
+                startY, width, height, surfaceWidth, surfaceHeight, distinct);
+    }
+
+    unsigned long bmSize = 4 * width * height;
+    unsigned char *bmBits = NSZoneMalloc(NULL, bmSize);
+
+    // Rows on the surface go top-down with device y; BMP rows are stored
+    // bottom-up, so emit the last memory row first.
+    O2argb8u *span = __builtin_alloca(width * sizeof(O2argb8u));
+    unsigned long dest = 0;
+    for (int row = startY + height - 1; row >= startY; row--) {
+        O2argb8u *pixels =
+                O2Image_read_argb8u(surface, startX, row, span, width);
+        for (int i = 0; i < width; i++) {
+            bmBits[dest++] = pixels[i].b;
+            bmBits[dest++] = pixels[i].g;
+            bmBits[dest++] = pixels[i].r;
+            bmBits[dest++] = 255; // force alpha
+        }
+    }
+
+    // Build a 32bpp BMP (BITMAPFILEHEADER + BITMAPINFOHEADER + pixels).
+    // These structs are not available outside Windows, so assemble the header
+    // byte by byte (little-endian).
+    unsigned char bfHeader[14];
+    bfHeader[0] = 'B';
+    bfHeader[1] = 'M';
+    uint32_t bfOffBits = 14 + 40;
+    uint32_t bfSize = bfOffBits + (uint32_t) bmSize;
+    memcpy(bfHeader + 2, &bfSize, 4);
+    memset(bfHeader + 6, 0, 4); // reserved
+    memcpy(bfHeader + 10, &bfOffBits, 4);
+
+    unsigned char biHeader[40];
+    memset(biHeader, 0, sizeof(biHeader));
+    uint32_t biSize = 40;
+    memcpy(biHeader + 0, &biSize, 4);
+    int32_t biWidth = width;
+    int32_t biHeight = height;
+    memcpy(biHeader + 4, &biWidth, 4);
+    memcpy(biHeader + 8, &biHeight, 4);
+    uint16_t biPlanes = 1;
+    uint16_t biBitCount = 32;
+    uint32_t biCompression = 0; // BI_RGB
+    memcpy(biHeader + 12, &biPlanes, 2);
+    memcpy(biHeader + 14, &biBitCount, 2);
+    memcpy(biHeader + 16, &biCompression, 4);
+    memcpy(biHeader + 20, &bmSize, 4); // biSizeImage
+
+    NSMutableData *result =
+            [NSMutableData dataWithBytes: bfHeader length: sizeof(bfHeader)];
+    [result appendBytes: biHeader length: sizeof(biHeader)];
+    [result appendBytes: bmBits length: bmSize];
+
+    NSZoneFree(NULL, bmBits);
+
+    return result;
 }
 
 @end
