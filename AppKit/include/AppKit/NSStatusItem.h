@@ -42,6 +42,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     CGFloat _length;
     NSMenu *_menu;
     NSInteger _actionMask;
+#ifndef WIN32
+    NSWindow *_trayWindow;
+#endif
 #ifdef WIN32
     int _trayIconID;
     HICON _trayIcon;

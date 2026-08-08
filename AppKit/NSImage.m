@@ -1142,7 +1142,6 @@ NSImageName const NSImageNameTouchBarVolumeUpTemplate =
           operation: (NSCompositingOperation) operation
            fraction: (CGFloat) fraction
 {
-
     // Keep a lid on any intermediate allocations while producing caches
     NSAutoreleasePool *pool = [NSAutoreleasePool new];
     NSImageRep *any = [[[self

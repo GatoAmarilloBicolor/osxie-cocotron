@@ -98,7 +98,7 @@ static NSStatusBar *_statusBar = nil;
         return 30;
     }
 #endif
-    return 42;
+    return 22;
 }
 
 #ifdef WIN32

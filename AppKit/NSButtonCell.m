@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSGraphics.h>
 #import <AppKit/NSGraphicsContext.h>
 #import <AppKit/NSGraphicsStyle.h>
+#import <execinfo.h>
 #import <AppKit/NSImage.h>
 #import <AppKit/NSMatrix.h>
 #import <AppKit/NSParagraphStyle.h>
@@ -1255,6 +1256,15 @@ static NSSize scaledImageSizeInFrameSize(NSSize imageSize, NSSize frameSize,
 }
 
 - (void) drawInteriorWithFrame: (NSRect) frame inView: (NSView *) controlView {
+    if (getenv("OSXIE_TRACE_BACKTRACE")) {
+        void *bt[32];
+        int n = backtrace(bt, 32);
+        char **syms = backtrace_symbols(bt, n);
+        fprintf(stderr, "[TRACE] NSButtonCell drawInterior backtrace (%d frames):\n", n);
+        for (int i = 0; i < n && i < 14; i++)
+            fprintf(stderr, "  %s\n", syms[i]);
+        free(syms);
+    }
     /* This method gets the original button frame. We have to compensate for
        borders. There is some duplication of rect calculation which can be split
        out

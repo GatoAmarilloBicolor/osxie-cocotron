@@ -45,6 +45,7 @@
     O2Rect _frame;
     NSUInteger _styleMask;
     BOOL _mapped;
+    BOOL _embedded;
     CGPoint _lastMotionPos;
     BOOL _isModal;
     BOOL _isOpaque;
@@ -63,6 +64,8 @@
 - (O2Rect) transformFrame: (O2Rect) frame;
 
 - (Window) windowHandle;
+
+- (void) dockInSystemTray;
 
 - (void) frameChanged;
 - (void) setLastKnownCursorPosition: (CGPoint) point;

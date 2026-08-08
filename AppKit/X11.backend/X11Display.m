@@ -59,6 +59,13 @@ void NSColorSetCatalogColor(NSColorListName catalogName, NSColorName colorName, 
 
 @implementation X11Display
 
+static int eventsTraceEnabled(void) {
+    static int enabled = -1;
+    if (enabled < 0)
+        enabled = getenv("OSXIE_TRACE_EVENTS") != NULL;
+    return enabled;
+}
+
 static int errorHandler(Display *display, XErrorEvent *errorEvent) {
     return [(X11Display *) [X11Display currentDisplay] handleError: errorEvent];
 }
@@ -1220,7 +1227,7 @@ static NSDictionary *modeInfoToDictionary(const XRRModeInfo *mi, int depth) {
         }
 
     case EnterNotify:
-        NSLog(@"EnterNotify");
+        if (eventsTraceEnabled()) NSLog(@"EnterNotify");
         if (!_cursorGrabbed)
             [window setLastKnownCursorPosition:
                             [window transformPoint: NSMakePoint(
@@ -1229,11 +1236,11 @@ static NSDictionary *modeInfoToDictionary(const XRRModeInfo *mi, int depth) {
         break;
 
     case LeaveNotify:
-        NSLog(@"LeaveNotify");
+        if (eventsTraceEnabled()) NSLog(@"LeaveNotify");
         break;
 
     case FocusIn:
-        NSLog(@"FocusIn");
+        if (eventsTraceEnabled()) NSLog(@"FocusIn");
         if ([delegate attachedSheet]) {
             [[delegate attachedSheet] makeKeyAndOrderFront: delegate];
             break;
@@ -1250,7 +1257,7 @@ static NSDictionary *modeInfoToDictionary(const XRRModeInfo *mi, int depth) {
         break;
 
     case FocusOut:
-        NSLog(@"FocusOut");
+        if (eventsTraceEnabled()) NSLog(@"FocusOut");
         [delegate platformWindowDeactivated: window
                     checkForAppDeactivation: NO];
         lastFocusedWindow = nil;
@@ -1261,7 +1268,7 @@ static NSDictionary *modeInfoToDictionary(const XRRModeInfo *mi, int depth) {
         break;
 
     case KeymapNotify:
-        NSLog(@"KeymapNotify");
+        if (eventsTraceEnabled()) NSLog(@"KeymapNotify");
         break;
 
     case Expose:;
@@ -1279,41 +1286,65 @@ static NSDictionary *modeInfoToDictionary(const XRRModeInfo *mi, int depth) {
         break;
 
     case GraphicsExpose:
-        NSLog(@"GraphicsExpose");
+        if (eventsTraceEnabled()) NSLog(@"GraphicsExpose");
         break;
 
     case NoExpose:
-        NSLog(@"NoExpose");
+        if (eventsTraceEnabled()) NSLog(@"NoExpose");
         break;
 
     case VisibilityNotify:
-        NSLog(@"VisibilityNotify");
+        if (eventsTraceEnabled()) NSLog(@"VisibilityNotify");
         break;
 
     case CreateNotify:
-        NSLog(@"CreateNotify");
+        if (eventsTraceEnabled()) NSLog(@"CreateNotify");
         break;
 
     case DestroyNotify:;
-        // we should never get this message before the WM_DELETE_WINDOW
-        // ClientNotify so normally, window should be nil here.
+        // The window was destroyed by the server/tray, not by us. Invalidate
+        // the platform window AND close the NSWindow so the delegate can
+        // re-dock (e.g. NSStatusItem's _trayWindowWillClose:), otherwise the
+        // app keeps flushing to _window==0 and the tray icon vanishes.
+        id closeDelegate = [window delegate];
+        if (getenv("OSXIE_TRACE_WINDOW_LIFE")) {
+            fprintf(stderr, "[LIFE] DestroyNotify xid=0x%lx mapped_window=%p closeDelegate=%p\n",
+                    (unsigned long) ev->xdestroywindow.window, window, closeDelegate);
+            if (window)
+                fprintf(stderr, "[LIFE]   invalidating xid=%lu\n",
+                        (unsigned long) [(X11Window *) window windowHandle]);
+        }
         [window invalidate];
+        if (closeDelegate != nil) {
+            [[NSRunLoop currentRunLoop] performSelector: @selector(platformWindowWillClose:)
+                                                 target: closeDelegate
+                                               argument: window
+                                                  order: 0
+                                                  modes: @[
+                                                      NSDefaultRunLoopMode, NSModalPanelRunLoopMode,
+                                                      NSEventTrackingRunLoopMode
+                                                  ]];
+        }
         break;
 
     case UnmapNotify:
-        NSLog(@"UnmapNotify");
+        if (getenv("OSXIE_TRACE_WINDOW_LIFE")) {
+            fprintf(stderr, "[LIFE] UnmapNotify xid=0x%lx mapped_window=%p\n",
+                    (unsigned long) ev->xunmap.window, window);
+        }
+        if (eventsTraceEnabled()) NSLog(@"UnmapNotify");
         break;
 
     case MapNotify:
-        NSLog(@"MapNotify");
+        if (eventsTraceEnabled()) NSLog(@"MapNotify");
         break;
 
     case MapRequest:
-        NSLog(@"MapRequest");
+        if (eventsTraceEnabled()) NSLog(@"MapRequest");
         break;
 
     case ReparentNotify:
-        NSLog(@"ReparentNotify");
+        if (eventsTraceEnabled()) NSLog(@"ReparentNotify");
         break;
 
     case ConfigureNotify:
@@ -1324,23 +1355,23 @@ static NSDictionary *modeInfoToDictionary(const XRRModeInfo *mi, int depth) {
         break;
 
     case ConfigureRequest:
-        NSLog(@"ConfigureRequest");
+        if (eventsTraceEnabled()) NSLog(@"ConfigureRequest");
         break;
 
     case GravityNotify:
-        NSLog(@"GravityNotify");
+        if (eventsTraceEnabled()) NSLog(@"GravityNotify");
         break;
 
     case ResizeRequest:
-        NSLog(@"ResizeRequest");
+        if (eventsTraceEnabled()) NSLog(@"ResizeRequest");
         break;
 
     case CirculateNotify:
-        NSLog(@"CirculateNotify");
+        if (eventsTraceEnabled()) NSLog(@"CirculateNotify");
         break;
 
     case CirculateRequest:
-        NSLog(@"CirculateRequest");
+        if (eventsTraceEnabled()) NSLog(@"CirculateRequest");
         break;
 
     case PropertyNotify:
@@ -1368,14 +1399,14 @@ static NSDictionary *modeInfoToDictionary(const XRRModeInfo *mi, int depth) {
         break;
 
     case ColormapNotify:
-        NSLog(@"ColormapNotify");
+        if (eventsTraceEnabled()) NSLog(@"ColormapNotify");
         break;
 
     case ClientMessage:
         if (ev->xclient.format == 32 &&
             ev->xclient.data.l[0] ==
                     XInternAtom(_display, "WM_DELETE_WINDOW", False)) {
-            NSLog(@"ClientMessage:WM_DELETE_WINDOW");
+            if (eventsTraceEnabled()) NSLog(@"ClientMessage:WM_DELETE_WINDOW");
             [[NSRunLoop currentRunLoop] cancelPerformSelector: @selector(platformWindowWillClose:)
                                                        target: delegate
                                                      argument: window];
@@ -1391,11 +1422,11 @@ static NSDictionary *modeInfoToDictionary(const XRRModeInfo *mi, int depth) {
         break;
 
     case MappingNotify:
-        NSLog(@"MappingNotify");
+        if (eventsTraceEnabled()) NSLog(@"MappingNotify");
         break;
 
     case GenericEvent:
-        NSLog(@"GenericEvent");
+        if (eventsTraceEnabled()) NSLog(@"GenericEvent");
         break;
 
     default:
@@ -1403,7 +1434,7 @@ static NSDictionary *modeInfoToDictionary(const XRRModeInfo *mi, int depth) {
             [self _invalidateRRCache];
             break;
         }
-        NSLog(@"Unknown X11 event type %i", ev->type);
+        if (eventsTraceEnabled()) NSLog(@"Unknown X11 event type %i", ev->type);
         break;
     }
 }
@@ -1429,6 +1460,10 @@ static NSDictionary *modeInfoToDictionary(const XRRModeInfo *mi, int depth) {
 }
 
 - (int) handleError: (XErrorEvent *) errorEvent {
+    // BadWindow on a window destroyed in the same race as a flush is benign
+    // (all other code paths guard _window==0); silence it to avoid log noise.
+    if (errorEvent->error_code == BadWindow)
+        return 0;
     NSLog(@"************** X11 ERROR!");
     NSLog(@"Request code: %d:%d", errorEvent->request_code,
           errorEvent->minor_code);

@@ -23,6 +23,7 @@
 #import <AppKit/NSPopUpWindow.h>
 #import <AppKit/NSRaise.h>
 #import <AppKit/NSWindow.h>
+#import <execinfo.h>
 #import <Foundation/NSBundle.h>
 #import <Foundation/NSException.h>
 #import <Foundation/NSMutableData.h>
@@ -38,6 +39,7 @@
 #import "X11Window.h"
 #import <X11/Xatom.h>
 #import <X11/Xutil.h>
+#import <unistd.h>
 
 @implementation X11Window
 
@@ -270,6 +272,9 @@ static NSData *makeWindowIcon() {
 }
 
 - (void) dealloc {
+    if (getenv("OSXIE_TRACE_WINDOW_LIFE"))
+        fprintf(stderr, "[LIFE] X11Window dealloc: xid=%lu delegate=%p\n",
+                (unsigned long) _window, _delegate);
     [self invalidate];
     [_deviceDictionary release];
     [super dealloc];
@@ -280,6 +285,10 @@ static NSData *makeWindowIcon() {
 }
 
 - (void) setStyleMaskInternal: (NSUInteger) mask force: (BOOL) force {
+    if (_window == 0) {
+        _styleMask = mask;
+        return;
+    }
     if (force || (mask & NSWindowStyleMaskResizable) !=
                          (_styleMask & NSWindowStyleMaskResizable)) {
         XSizeHints *sh = XAllocSizeHints();
@@ -355,10 +364,77 @@ static NSData *makeWindowIcon() {
 }
 
 - (void) ensureMapped {
-    if (!_mapped) {
+    if (!_mapped && !_embedded) {
         XMapWindow(_display, _window);
         _mapped = YES;
     }
+}
+
+- (void) dockInSystemTray {
+    Atom selectionAtom = XInternAtom(_display, "_NET_SYSTEM_TRAY_S0", False);
+    Window trayWindow = XGetSelectionOwner(_display, selectionAtom);
+    if (trayWindow == None) {
+        if (getenv("OSXIE_TRACE_WINDOW_LIFE"))
+            fprintf(stderr, "[TRACE] dockInSystemTray: no tray selection owner\n");
+        return;
+    }
+
+    // XEmbed handshake: declare we're an XEmbed client (version 0, flags 0).
+    // The window must stay UNMAPPED until the tray reparents it — mapping a
+    // top-level window before embedding makes KWin/xembedsniproxy destroy it.
+    long xembedInfo[2] = {0, 0};
+    XChangeProperty(_display, _window,
+                    XInternAtom(_display, "_XEMBED_INFO", False),
+                    XInternAtom(_display, "_XEMBED_INFO", False), 32,
+                    PropModeReplace, (unsigned char *) xembedInfo, 2);
+
+    // Ask the tray to dock us: _NET_SYSTEM_TRAY_OPCODE, SYSTEM_TRAY_REQUEST_DOCK=0
+    XClientMessageEvent request = {0};
+    request.type = ClientMessage;
+    request.window = trayWindow;
+    request.message_type =
+            XInternAtom(_display, "_NET_SYSTEM_TRAY_OPCODE", False);
+    request.format = 32;
+    request.data.l[0] = CurrentTime;
+    request.data.l[1] = 0; // SYSTEM_TRAY_REQUEST_DOCK
+    request.data.l[2] = (long) _window;
+    request.data.l[3] = 0;
+    request.data.l[4] = 0;
+
+    if (getenv("OSXIE_TRACE_WINDOW_LIFE"))
+        fprintf(stderr, "[TRACE] dockInSystemTray: dock request to %lu for window %lu\n",
+                trayWindow, (unsigned long) _window);
+    XSendEvent(_display, trayWindow, False, NoEventMask,
+               (XEvent *) &request);
+    XSync(_display, False);
+
+    // Wait for the tray to reparent us (poll for up to ~3s). Only then is it
+    // safe to map, otherwise the window flashes at (0,0) or gets destroyed.
+    BOOL reparented = NO;
+    for (int i = 0; i < 60; i++) {
+        Window root, parent, *children;
+        unsigned int nchild;
+        if (XQueryTree(_display, _window, &root, &parent, &children, &nchild)) {
+            if (children)
+                XFree(children);
+            if (parent != root && parent != None) {
+                reparented = YES;
+                break;
+            }
+        }
+        usleep(50000);
+    }
+    if (reparented) {
+        // We are embedded: the tray owns our placement. Never map/raise/
+        // restack us against the root afterwards, or KWin un-embeds and
+        // destroys the window.
+        _embedded = YES;
+        _mapped = YES;
+    }
+    if (getenv("OSXIE_TRACE_WINDOW_LIFE"))
+        fprintf(stderr, "[TRACE] dockInSystemTray: reparented=%d\n", reparented);
+
+    [self ensureMapped];
 }
 
 - (void) showWindowWithoutActivation {
@@ -375,6 +451,9 @@ static NSData *makeWindowIcon() {
 }
 
 - (void) syncDelegateProperties {
+    if (_window == 0) {
+        return;
+    }
     long mask = KeyPressMask | KeyReleaseMask | ExposureMask |
                 StructureNotifyMask | EnterWindowMask | LeaveWindowMask |
                 ButtonPressMask | ButtonReleaseMask | ButtonMotionMask |
@@ -390,6 +469,16 @@ static NSData *makeWindowIcon() {
 }
 
 - (void) invalidate {
+    if (getenv("OSXIE_TRACE_WINDOW_LIFE")) {
+        fprintf(stderr, "[LIFE] X11Window invalidate: xid=%lu delegate=%p\n",
+                (unsigned long) _window, _delegate);
+        void *bt[32];
+        int n = backtrace(bt, 32);
+        char **syms = backtrace_symbols(bt, n);
+        for (int i = 0; i < n && i < 14; i++)
+            fprintf(stderr, "  %s\n", syms[i]);
+        free(syms);
+    }
     // This is essentially dealloc; we release our contexts
     // and windows, but unlike dealloc, this method can be called
     // several times, so set everything to nil/NULL/0.
@@ -427,6 +516,10 @@ static NSData *makeWindowIcon() {
 
 - (O2Context *) createCGContextIfNeeded {
     if (_context == nil) {
+        if (getenv("OSXIE_TRACE_FLUSH"))
+            fprintf(stderr, "[TRACE] createCGContextIfNeeded window=%lu size=%zux%zu\n",
+                    (unsigned long) _window, (size_t) _frame.size.width,
+                    (size_t) _frame.size.height);
         O2ColorSpaceRef colorSpace = O2ColorSpaceCreateDeviceRGB();
         O2Surface *surface = [[O2Surface alloc]
                    initWithBytes: NULL
@@ -466,6 +559,9 @@ static NSData *makeWindowIcon() {
 }
 
 - (void) setTitle: (NSString *) title {
+    if (_window == 0) {
+        return;
+    }
     XTextProperty prop;
     const char *text = [title cString];
     XStringListToTextProperty((char **) &text, 1, &prop);
@@ -473,6 +569,9 @@ static NSData *makeWindowIcon() {
 }
 
 - (void) setFrame: (O2Rect) frame {
+    if (_window == 0) {
+        return;
+    }
     frame = [self transformFrame: frame];
     XMoveResizeWindow(_display, _window, frame.origin.x, frame.origin.y,
                       frame.size.width, frame.size.height);
@@ -512,11 +611,17 @@ static NSData *makeWindowIcon() {
 }
 
 - (void) hideWindow {
+    if (_embedded || _window == 0) {
+        return;
+    }
     XUnmapWindow(_display, _window);
     _mapped = NO;
 }
 
 - (void) placeAboveWindow: (NSInteger) otherNumber {
+    if (_embedded || _window == 0) {
+        return;
+    }
     X11Window *other = [X11Window windowWithWindowNumber: otherNumber];
     [self ensureMapped];
 
@@ -529,6 +634,9 @@ static NSData *makeWindowIcon() {
 }
 
 - (void) placeBelowWindow: (NSInteger) otherNumber {
+    if (_embedded || _window == 0) {
+        return;
+    }
     X11Window *other = [X11Window windowWithWindowNumber: otherNumber];
     [self ensureMapped];
 
@@ -541,6 +649,9 @@ static NSData *makeWindowIcon() {
 }
 
 - (void) makeKey {
+    if (_embedded || _window == 0) {
+        return;
+    }
     [self ensureMapped];
     XRaiseWindow(_display, _window);
 }
@@ -552,14 +663,23 @@ static NSData *makeWindowIcon() {
 }
 
 - (void) miniaturize {
+    if (_embedded || _window == 0) {
+        return;
+    }
     XIconifyWindow(_display, _window, DefaultScreen(_display));
 }
 
 - (void) deminiaturize {
+    if (_embedded || _window == 0) {
+        return;
+    }
     XRaiseWindow(_display, _window);
 }
 
 - (BOOL) isMiniaturized {
+    if (_window == 0 || _embedded) {
+        return NO;
+    }
     Atom wmState = XInternAtom(_display, "_NET_WM_STATE", FALSE);
     Atom hiddenState = XInternAtom(_display, "_NET_WM_STATE_HIDDEN", FALSE);
 
@@ -637,10 +757,84 @@ static NSData *makeWindowIcon() {
 }
 
 - (void) flushBuffer {
+    if (getenv("OSXIE_TRACE_FLUSH"))
+        fprintf(stderr, "[TRACE] flushBuffer window=%lu context=%p\n",
+                (unsigned long) _window, _context);
     if (_context == nil)
         return;
     O2ContextFlush(_context);
-    [self openGLFlushBuffer];
+    [self softwareFlushToX];
+}
+
+- (void) softwareFlushToX {
+    if (_context == nil || _window == 0)
+        return;
+    O2Surface *surface = [_context surface];
+    if (surface == nil)
+        return;
+    size_t w = O2SurfaceGetWidth(surface);
+    size_t h = O2SurfaceGetHeight(surface);
+    if (w == 0 || h == 0)
+        return;
+    void *bytes = O2SurfaceGetPixelBytes(surface);
+    size_t stride = O2SurfaceGetBytesPerRow(surface);
+    if (bytes == NULL)
+        return;
+
+    XWindowAttributes attrs;
+    if (!XGetWindowAttributes(_display, _window, &attrs))
+        return;
+    int depth = attrs.depth;
+    Visual *vis = attrs.visual;
+
+    size_t bufferStride = w * 4;
+    unsigned char *buf = malloc(bufferStride * h);
+    if (buf == NULL)
+        return;
+
+    // Surface is premultiplied ARGB, host byte order -> memory bytes are
+    // b,g,r,a. Pack as straight-alpha XRGB (a in top byte, 0xFF = opaque).
+    for (size_t y = 0; y < h; y++) {
+        const unsigned char *src = (const unsigned char *)bytes + y * stride;
+        unsigned char *dst = buf + y * bufferStride;
+        for (size_t x = 0; x < w; x++) {
+            dst[0] = src[0]; // b
+            dst[1] = src[1]; // g
+            dst[2] = src[2]; // r
+            dst[3] = 0xFF;   // a
+            dst += 4;
+            src += 4;
+        }
+    }
+
+    // Build the XImage by hand so we fully control buffer ownership:
+    // XFree(img) frees only the struct, free(buf) frees the pixels exactly
+    // once (XCreateImage/XDestroyImage manage the pixel buffer themselves and
+    // crashed with a heap double-free in this environment).
+    XImage img;
+    memset(&img, 0, sizeof(img));
+    img.width = w;
+    img.height = h;
+    img.xoffset = 0;
+    img.format = ZPixmap;
+    img.data = (char *) buf;
+    img.byte_order = LSBFirst;
+    img.bitmap_unit = 32;
+    img.bitmap_bit_order = LSBFirst;
+    img.bitmap_pad = 32;
+    img.depth = depth;
+    img.bytes_per_line = bufferStride;
+    img.bits_per_pixel = 32;
+    img.red_mask = vis->red_mask;
+    img.green_mask = vis->green_mask;
+    img.blue_mask = vis->blue_mask;
+    img.obdata = NULL;
+
+    GC gc = XCreateGC(_display, _window, 0, NULL);
+    XPutImage(_display, _window, gc, &img, 0, 0, 0, 0, w, h);
+    XFreeGC(_display, gc);
+    XFlush(_display);
+    free(buf);
 }
 
 - (void) setLastKnownCursorPosition: (CGPoint) point {

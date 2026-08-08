@@ -36,12 +36,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSScreen.h>
 #import <AppKit/NSSheetContext.h>
 #import <AppKit/NSSpellChecker.h>
-#import <AppKit/NSSystemInfoPanel.h>
-#import <AppKit/NSWindow-Private.h>
+#import <AppKit/NSSystemInfoPanel.h>#import <AppKit/NSWindow-Private.h>
 #import <AppKit/NSWorkspace.h>
 #import <CoreGraphics/CGWindow.h>
 #import <objc/message.h>
 #import <pthread.h>
+#import <stdio.h>
+#import <stdarg.h>
+
+static void osxieAppLog(const char *fmt, ...) {
+    va_list ap;
+    FILE *f = fopen("/tmp/osxie_app_trace.log", "a");
+    if (f == NULL) return;
+    va_start(ap, fmt);
+    vfprintf(f, fmt, ap);
+    va_end(ap);
+    fputc('\n', f);
+    fclose(f);
+}
 
 const NSRunLoopMode NSModalPanelRunLoopMode = @"NSModalPanelRunLoopMode";
 const NSRunLoopMode NSEventTrackingRunLoopMode = @"NSEventTrackingRunLoopMode";
@@ -553,62 +565,88 @@ NSApplication *NSApp = nil;
     NSAutoreleasePool *pool = [NSAutoreleasePool new];
     BOOL needsUntitled = YES;
 
+    if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: begin\n");
+    osxieAppLog("finishLaunching: begin");
+
+    if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: posting WillFinishLaunching\n");
     NS_DURING [[NSNotificationCenter defaultCenter]
             postNotificationName: NSApplicationWillFinishLaunchingNotification
                           object: self];
     NS_HANDLER [self reportException: localException];
     NS_ENDHANDLER
+    if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: WillFinishLaunching posted\n");
 
     // Load the application icon if we have one
     NSString *iconName = [[[NSBundle mainBundle] infoDictionary]
             objectForKey: @"CFBundleIconFile"];
+    if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: iconName=%s\n",
+            iconName ? [iconName UTF8String] : "(null)");
     if (iconName) {
-        iconName = [iconName stringByAppendingPathExtension: @"icns"];
-        NSImage *image = [NSImage imageNamed: iconName];
-        [self setApplicationIconImage: image];
+        if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: icon SKIPPED (workaround: -[NSImage imageNamed:] segfaults on real .icns)\n");
+        // WORKAROUND (root cause pending): loading a real .icns through
+        // -[NSImage imageNamed:] crashes in objc_msgSend on an object with a
+        // NULL isa. Skip the app icon so finishLaunching can complete.
+        // iconName = [iconName stringByAppendingPathExtension: @"icns"];
+        // NSImage *image = [NSImage imageNamed: iconName];
+        // [self setApplicationIconImage: image];
     }
 
     // Give us a first event
+    if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: scheduling first event timer\n");
     [NSTimer scheduledTimerWithTimeInterval: 0.1
                                      target: nil
                                    selector: NULL
                                    userInfo: nil
                                     repeats: NO];
+    if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: timer scheduled\n");
 
+    if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: closing splash\n");
     [self _closeSplashImage];
+    if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: splash closed\n");
 
     NSDocumentController *controller = nil;
     id types = [[[NSBundle mainBundle] infoDictionary]
             objectForKey: @"CFBundleDocumentTypes"];
+    if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: types count=%d\n",
+            (int)[types count]);
     if ([types count] > 0)
         controller = [NSDocumentController sharedDocumentController];
+    if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: controller=%p\n", controller);
 
+    if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: openFiles\n");
     if ([self openFiles]) {
         needsUntitled = NO;
     }
+    if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: openFiles done, needsUntitled=%d\n", needsUntitled);
 
     if (needsUntitled && _delegate &&
         [_delegate respondsToSelector: @selector
                    (applicationShouldOpenUntitledFile:)]) {
         needsUntitled = [_delegate applicationShouldOpenUntitledFile: self];
+        if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: shouldOpenUntitled -> %d\n", needsUntitled);
     }
 
     if (needsUntitled && _delegate &&
         [_delegate
                 respondsToSelector: @selector(applicationOpenUntitledFile:)]) {
         needsUntitled = ![_delegate applicationOpenUntitledFile: self];
+        if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: openUntitled -> %d\n", needsUntitled);
     }
 
     if (needsUntitled && controller &&
         ![controller documentClassForType: [controller defaultType]]) {
         needsUntitled = NO;
+        if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: no doc class, needsUntitled=NO\n");
     }
 
     if (needsUntitled && controller) {
+        if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: newDocument\n");
         [controller _updateRecentDocumentsMenu];
         [controller newDocument: self];
+        if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: newDocument done\n");
     }
 
+    if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: posting DidFinishLaunching\n");
     NS_DURING [[NSNotificationCenter defaultCenter]
             postNotificationName: NSApplicationDidFinishLaunchingNotification
                           object: self];
@@ -616,6 +654,8 @@ NSApplication *NSApp = nil;
     NS_ENDHANDLER
 
             [pool release];
+    if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: done\n");
+    osxieAppLog("finishLaunching: done");
 }
 
 - (void) _checkForReleasedWindows {
@@ -669,12 +709,18 @@ NSApplication *NSApp = nil;
     static BOOL didlaunch = NO;
     NSAutoreleasePool *pool;
 
+    if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] NSApp run: begin\n");
+    osxieAppLog("NSApp run: begin");
     _isRunning = YES;
 
     if (!didlaunch) {
         didlaunch = YES;
         pool = [NSAutoreleasePool new];
+        if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] NSApp run: calling finishLaunching\n");
+        osxieAppLog("NSApp run: calling finishLaunching");
         [self finishLaunching];
+        if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] NSApp run: finishLaunching returned\n");
+        osxieAppLog("NSApp run: finishLaunching returned");
         [pool release];
     }
 
@@ -1628,49 +1674,51 @@ int NSApplicationMain(int argc, const char *argv[]) {
     __NSInitializeProcess(argc, argv);
 #endif
 
-    fprintf(stderr, "[TRACE] NSApplicationMain begin nib=?\n");
+    if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] NSApplicationMain begin bundle-load & nib initialization\n");
     NSAutoreleasePool *pool = [NSAutoreleasePool new];
     NSBundle *bundle = [NSBundle mainBundle];
-    Class class = [bundle principalClass];
-    NSString *nibFile = [bundle infoDictionary][@"NSMainNibFile"];
-
-#if !defined(DARLING) && !defined(OSXIE)
-    if (argc > 1) {
-        NSMutableArray *arguments =
-                [NSMutableArray arrayWithCapacity: arg c - 1];
-        for (int i = 1; i < argc; i++)
-            if (argv[i][0] != '-')
-                [arguments addObject: [NSString stringWithUTF8String: argv[i]]];
-            else if (argv[i][1] == '-' && argv[i][2] == '\0')
-                break;
-            else // (argv[i][0] == '-' && argv[i] != "--")
-                    if (*(int64_t *) argv[i] != *(int64_t *) "-NSOpen")
-                i++;
-
-        if ((argc = [arguments count]))
-            [[NSUserDefaults standardUserDefaults]
-                    setObject: ((argc == 1) ? [arguments lastObject]
-                                            : arguments)
-                       forKey: @"NSOpen"];
+    
+    // Fix #2: Ensure bundle principal class & main executable classes are loaded before unarchiving NIB
+    if (bundle != nil) {
+        [bundle load];
     }
 
-    [NSClassFromString(@"Win32RunningCopyPipe")
-            performSelector: @selector(startRunningCopyPipe)];
-#endif
+    Class class = [bundle principalClass];
+    NSString *nibFile = [bundle infoDictionary][@"NSMainNibFile"];
+    if (nibFile == nil) {
+        nibFile = [bundle infoDictionary][@"NSMainStoryboardFile"];
+    }
 
     if (class == Nil)
         class = [NSApplication class];
 
     [class sharedApplication];
 
-    nibFile = [nibFile stringByDeletingPathExtension];
-
-    if (![NSBundle loadNibNamed: nibFile owner: NSApp])
-        NSLog(@"Unable to load main nib file %@", nibFile);
+    if (nibFile != nil && [nibFile length] > 0) {
+        nibFile = [nibFile stringByDeletingPathExtension];
+        if (![NSBundle loadNibNamed: nibFile owner: NSApp]) {
+            NSLog(@"[NSApplication] Warning: Unable to load main nib/storyboard file %@", nibFile);
+        } else {
+            if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] NSApplicationMain: main nib loaded successfully, bringing windows to front\n");
+            for (NSWindow *win in [NSApp windows]) {
+                // Skip status-bar/tray windows: makeKeyAndOrderFront: on an
+                // XEmbed-docked tray window makes KWin unmapped/destroy it
+                // (and ordering a dead offscreen window spams BadWindow).
+                if ([win level] == NSStatusWindowLevel) {
+                    continue;
+                }
+                [win makeKeyAndOrderFront: nil];
+            }
+        }
+    } else {
+        if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] NSApplicationMain: no NSMainNibFile specified in Info.plist\n");
+    }
 
     [pool release];
 
+    if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] NSApplicationMain: calling run\n");
     [NSApp run];
+    if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] NSApplicationMain: run returned\n");
 
     return 0;
 }

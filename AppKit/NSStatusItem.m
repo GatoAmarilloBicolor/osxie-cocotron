@@ -27,6 +27,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSStatusItem+Private.h>
 #import <AppKit/NSStatusItem.h>
 #import <AppKit/NSWindow.h>
+#import <stdio.h>
+#ifndef WIN32
+#import "X11Window.h"
+#endif
 #ifdef WIN32
 #import <AppKit/NSStatusBar_(Private).h>
 #import <AppKit/Win32Window.h>
@@ -308,6 +312,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     if (_trayIconID <= -1) {
         [self _createTrayIcon];
     }
+#else
+    [self _ensureTrayWindow];
 #endif
 }
 - (NSImage *) alternateImage {
@@ -329,6 +335,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     [_title release];
     _title = nil;
     _title = [title copy];
+    [self _ensureTrayWindow];
 #endif
 }
 - (void) setToolTip: (NSString *) toolTip {
@@ -352,6 +359,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     _view = nil;
     _view = [view copy];
     // Start capture timer
+#ifndef WIN32
+    [self _ensureTrayWindow];
+#endif
 }
 
 - (NSButton *) button {
@@ -360,10 +370,81 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
         [_button setButtonType: NSMomentaryLightButton];
         [_button setTarget: _target];
         [_button setAction: _action];
+        [self _ensureTrayWindow];
     }
 
     return _button;
 }
+
+#ifndef WIN32
+- (void) _trayWindowWillClose: (NSNotification *) note {
+    // The system tray removed/destroyed our embedded window (e.g. WM_DELETE
+    // on a stale embed). Drop it and re-dock on the next access so the icon
+    // does not disappear and the app does not touch a closed window.
+    if (_trayWindow != nil) {
+        [[NSNotificationCenter defaultCenter]
+                removeObserver: self
+                          name: NSWindowWillCloseNotification
+                        object: _trayWindow];
+        // Do NOT release here: the window's _releaseWhenClosed (default YES)
+        // already autoreleases it in -close:, and the closing path (e.g. the
+        // deferred platformWindowWillClose: perform) may hold another retain.
+        // Releasing here double-releases and crashes (SIGEXC in objc_msgSend).
+        _trayWindow = nil;
+    }
+    [self _ensureTrayWindow];
+}
+
+- (void) _ensureTrayWindow {
+    BOOL newlyCreated = NO;
+    if (_trayWindow == nil) {
+        // On X11 the status item is a small borderless window that we dock into
+        // the system tray (_NET_SYSTEM_TRAY_S0 / XEmbed). The button is its
+        // content view, so the normal AppKit drawing machinery renders it.
+        CGFloat thickness = [[NSStatusBar systemStatusBar] thickness];
+        CGFloat width = _length > 0 ? _length : thickness;
+        NSRect frame = NSMakeRect(0, 0, width, thickness);
+
+        _trayWindow = [[NSWindow alloc]
+                initWithContentRect: frame
+                          styleMask: NSBorderlessWindowMask
+                            backing: NSBackingStoreBuffered
+                              defer: NO];
+        [_trayWindow setLevel: NSStatusWindowLevel];
+        [_trayWindow setHasShadow: NO];
+        [[NSNotificationCenter defaultCenter]
+                addObserver: self
+                   selector: @selector(_trayWindowWillClose:)
+                       name: NSWindowWillCloseNotification
+                     object: _trayWindow];
+        newlyCreated = YES;
+    }
+
+    // Refresh the content view. The button may be created after the window
+    // (e.g. when a setter docks the item before the button is first requested).
+    BOOL contentViewChanged = NO;
+    if (_view != nil && [_trayWindow contentView] != _view) {
+        [_view setFrame: [_trayWindow frame]];
+        [_trayWindow setContentView: _view];
+        contentViewChanged = YES;
+    } else if (_button != nil && [_trayWindow contentView] != _button) {
+        [_button setFrame: [_trayWindow frame]];
+        [_trayWindow setContentView: _button];
+        contentViewChanged = YES;
+    }
+
+    if (newlyCreated) {
+        X11Window *platformWindow =
+                (X11Window *) [_trayWindow platformWindow];
+        [platformWindow dockInSystemTray];
+
+        [_trayWindow orderFront: nil];
+    } else if (contentViewChanged) {
+        [_trayWindow setViewsNeedDisplay: YES];
+        [_trayWindow displayIfNeeded];
+    }
+}
+#endif
 
 - (BOOL) highlightMode {
     return _highlightMode;
@@ -397,6 +478,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (void) setLength: (CGFloat) len {
 #ifndef WIN32
     _length = len;
+    [self _ensureTrayWindow];
 #endif
 }
 
@@ -407,6 +489,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     [_menu release];
     _menu = nil;
     _menu = [menu copy];
+#ifndef WIN32
+    [self _ensureTrayWindow];
+#endif
 #ifdef WIN32
     // Preprocess Menu into HMENU ready for Win32 Events
     if (_win32Menu == NULL) {

@@ -2167,11 +2167,7 @@ static BOOL _allowsAutomaticWindowTabbing;
         [self update];
         _isVisible = YES;
         [[self platformWindow] placeAboveWindow: relativeTo];
-        /* In some instances when a COMMAND is issued from a menu item to bring
-           a window front, the window is not displayed right (black,
-           incomplete). This may be the right place to do this, maybe not,
-           further investigation is required.
-        */
+        [[self platformWindow] showWindowWithoutActivation];
         [self displayIfNeeded];
         // This is here since it would seem that doing this any earlier will not
         // work.
@@ -2361,17 +2357,46 @@ static BOOL _allowsAutomaticWindowTabbing;
                 mouseExited: event];
         break;
 
-    case NSKeyDown:
-        [_firstResponder keyDown: event];
+    case NSKeyDown: {
+        NSResponder *responder = _firstResponder;
+        BOOL handled = NO;
+        while (responder != nil && !handled) {
+            if ([responder respondsToSelector: @selector(keyDown:)]) {
+                [responder keyDown: event];
+                handled = YES;
+                break;
+            }
+            responder = [responder nextResponder];
+        }
+        if (!handled) {
+            [self interpretKeyEvents: [NSArray arrayWithObject: event]];
+        }
         break;
+    }
 
-    case NSKeyUp:
-        [_firstResponder keyUp: event];
+    case NSKeyUp: {
+        NSResponder *responder = _firstResponder;
+        while (responder != nil) {
+            if ([responder respondsToSelector: @selector(keyUp:)]) {
+                [responder keyUp: event];
+                break;
+            }
+            responder = [responder nextResponder];
+        }
         break;
+    }
 
-    case NSFlagsChanged:
-        [_firstResponder flagsChanged: event];
+    case NSFlagsChanged: {
+        NSResponder *responder = _firstResponder;
+        while (responder != nil) {
+            if ([responder respondsToSelector: @selector(flagsChanged:)]) {
+                [responder flagsChanged: event];
+                break;
+            }
+            responder = [responder nextResponder];
+        }
         break;
+    }
 
     case NSPlatformSpecific:
         [_platformWindow
