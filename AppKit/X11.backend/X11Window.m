@@ -339,8 +339,6 @@ static NSData *makeWindowIcon() {
 }
 
 - (void) setStyleMask: (NSUInteger) mask {
-    NSLog(@"X11Window setStyleMask: 0x%lx\n", (unsigned long) mask);
-
     [self setStyleMaskInternal: mask force: NO];
 
     _styleMask = mask;

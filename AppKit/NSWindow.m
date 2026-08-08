@@ -3271,8 +3271,7 @@ static BOOL _allowsAutomaticWindowTabbing;
 
             // FIXME:
             if (options & NSTrackingEnabledDuringMouseDrag) {
-                // NSLog(@"NSTrackingEnabledDuringMouseDrag handling
-                // unimplemented.");
+                // unimplemented.
             }
 
             // Send appropriate events.

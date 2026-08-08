@@ -74,7 +74,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (void) _processWin32Event: (int) event {
     switch (event) {
     case WM_RBUTTONUP:
-        NSLog(@"Clicked Contextual");
         [[NSNotificationCenter defaultCenter]
                 addObserver: self
                    selector: @selector(processCommandEvent:)
@@ -83,7 +82,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
         [self _showContextMenu];
         break;
     case WM_LBUTTONUP:
-        NSLog(@"Clicked");
         break;
     default:
         break;
@@ -91,9 +89,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (void) processCommandEvent: (NSNotification *) notification {
-    NSValue *obj = [notification object];
-    NSLog(@"Got command event with data: %d:%d", [obj pointValue].x,
-          [obj pointValue].y);
     [[NSNotificationCenter defaultCenter] removeObserver: self];
 }
 
@@ -466,7 +461,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     int traySizeY = GetSystemMetrics(SM_CYSMICON);
     // Make sure we return a value that will ensure icon will not be clipped
     // with non-standard tray icon sizes
-    NSLog(@"X:%d Y:%d", traySizeX, traySizeY);
     if (traySizeX > traySizeY) {
         return traySizeY;
     } else {
@@ -503,7 +497,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
                     withIdentifier: i
                           intoMenu: _win32Menu];
         }
-        NSLog(@"Done");
     }
 #endif
 }
