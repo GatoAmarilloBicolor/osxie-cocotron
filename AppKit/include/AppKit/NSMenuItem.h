@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <Foundation/NSObject.h>
 #import <AppKit/NSUserInterfaceItemIdentification.h>
 
-@class NSMenu, NSImage, NSAttributedString;
+@class NSMenu, NSImage, NSAttributedString, NSView;
 
 @interface NSMenuItem : NSObject <NSCopying, NSValidatedUserInterfaceItem, NSUserInterfaceItemIdentification> {
     NSMenu *_menu;
@@ -45,6 +45,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     NSImage *_onStateImage;
     NSImage *_offStateImage;
     NSImage *_mixedStateImage;
+    NSView *_view;
     BOOL _alternate;
     BOOL _allowsKeyEquivalentWhenHidden;
     NSUserInterfaceItemIdentifier _identifier;
@@ -104,6 +105,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (void) setSubmenu: (NSMenu *) submenu;
 - (void) setEnabled: (BOOL) flag;
 - (void) setHidden: (BOOL) flag;
+
+- (NSView *) view;
+- (void) setView: (NSView *) view;
 
 - (NSString *) _keyEquivalentDescription;
 

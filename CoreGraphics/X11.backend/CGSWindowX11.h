@@ -20,9 +20,16 @@
 #define CGSWINDOWX11_H
 
 #import <CoreGraphics/CGSWindow.h>
+#import <X11/Xlib.h>
 
-@interface CGSWindowX11 : CGSWindow
+@interface CGSWindowX11 : CGSWindow {
+	Window _x11Window;
+	CGRect _bounds;
+	NSMutableDictionary<NSString*, id>* _properties;
+}
+
+-(Display*) display;
+
 @end
 
 #endif
-

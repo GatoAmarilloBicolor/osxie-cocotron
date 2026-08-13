@@ -217,6 +217,109 @@ NSString *const kCAContentsFormatGray8Uint = @"Gray8";
     _magnificationFilter = value;
 }
 
+- (NSString *) contentsGravity {
+    return _contentsGravity;
+}
+
+- (void) setContentsGravity: (NSString *) value {
+    value = [value copy];
+    [_contentsGravity release];
+    _contentsGravity = value;
+}
+
+- (NSDictionary *) actions {
+    return _actions;
+}
+
+- (void) setActions: (NSDictionary *) value {
+    value = [value copy];
+    [_actions release];
+    _actions = value;
+}
+
+- (CGColorRef) backgroundColor {
+    return _backgroundColor;
+}
+
+- (void) setBackgroundColor: (CGColorRef) value {
+    _backgroundColor = value;
+}
+
+- (CGColorRef) borderColor {
+    return _borderColor;
+}
+
+- (void) setBorderColor: (CGColorRef) value {
+    _borderColor = value;
+}
+
+- (CGFloat) borderWidth {
+    return _borderWidth;
+}
+
+- (void) setBorderWidth: (CGFloat) value {
+    _borderWidth = value;
+}
+
+- (CGFloat) contentsScale {
+    return _contentsScale;
+}
+
+- (void) setContentsScale: (CGFloat) value {
+    _contentsScale = value;
+}
+
+- (CGFloat) cornerRadius {
+    return _cornerRadius;
+}
+
+- (void) setCornerRadius: (CGFloat) value {
+    _cornerRadius = value;
+}
+
+- (BOOL) isHidden {
+    return _hidden;
+}
+
+- (void) setHidden: (BOOL) value {
+    _hidden = value;
+}
+
+- (CALayer *) mask {
+    return _mask;
+}
+
+- (void) setMask: (CALayer *) value {
+    _mask = value;
+}
+
+- (BOOL) masksToBounds {
+    return _masksToBounds;
+}
+
+- (void) setMasksToBounds: (BOOL) value {
+    _masksToBounds = value;
+}
+
+- (NSString *) name {
+    return _name;
+}
+
+- (void) setName: (NSString *) value {
+    value = [value copy];
+    [_name release];
+    _name = value;
+}
+
+- (BOOL) needsLayout {
+    return _needsLayout;
+}
+
+- (void) setNeedsLayout {
+    NSLog(@"-[CALayer setNeedsLayout] unimplemented in %s at %d", __FILE__, __LINE__);
+    _needsLayout = YES;
+}
+
 - init {
     _superlayer = nil;
     _sublayers = [NSArray new];
@@ -231,6 +334,8 @@ NSString *const kCAContentsFormatGray8Uint = @"Gray8";
     _sublayerTransform = CATransform3DIdentity;
     _minificationFilter = kCAFilterLinear;
     _magnificationFilter = kCAFilterLinear;
+    _contentsGravity = kCAGravityResize;
+    _contentsScale = 1.0;
     _animations = [[NSMutableDictionary alloc] init];
     return self;
 }
@@ -240,6 +345,9 @@ NSString *const kCAContentsFormatGray8Uint = @"Gray8";
     [_animations release];
     [_minificationFilter release];
     [_magnificationFilter release];
+    [_contentsGravity release];
+    [_actions release];
+    [_name release];
     [super dealloc];
 }
 

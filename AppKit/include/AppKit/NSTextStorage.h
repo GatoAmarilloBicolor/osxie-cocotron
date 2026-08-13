@@ -42,6 +42,9 @@ APPKIT_EXPORT NSString *const NSTextStorageDidProcessEditingNotification;
 - delegate;
 - (NSArray *) layoutManagers;
 
+- initWithString: (NSString *) string;
+- initWithAttributedString: (NSAttributedString *) string;
+
 - (int) changeInLength;
 - (unsigned) editedMask;
 - (NSRange) editedRange;

@@ -115,6 +115,8 @@ typedef NS_OPTIONS(NSUInteger, NSApplicationPresentationOptions) {
     NSApplicationPresentationDisableCursorLocationAssistance = 1 << 12,
 };
 
+@class NSAppearance;
+
 @interface NSApplication : NSResponder {
     NSDisplay *_display;
     id _delegate;
@@ -140,9 +142,8 @@ typedef NS_OPTIONS(NSUInteger, NSApplicationPresentationOptions) {
     NSMutableArray *_orderedWindows; // get rid of
     NSTimer *_attentionTimer;
     NSApplicationPresentationOptions _presentationOptions;
+    NSAppearance *_appearance;
 }
-
-@property(strong) NSMenu *helpMenu;
 @property(readonly) NSApplicationPresentationOptions currentSystemPresentationOptions;
 @property NSApplicationPresentationOptions presentationOptions;
 
@@ -274,6 +275,13 @@ typedef NS_OPTIONS(NSUInteger, NSApplicationPresentationOptions) {
 - (void) showHelp: sender;
 
 - (NSDockTile *) dockTile;
+
+- (NSAppearance *) effectiveAppearance;
+- (void) setEffectiveAppearance: (NSAppearance *) appearance;
+@property(strong) NSAppearance *appearance;
+
+- (BOOL) shouldRestoreStateOnNextLaunch;
+- (void) setShouldRestoreStateOnNextLaunch: (BOOL) flag;
 
 // private
 - (void) _addWindow: (NSWindow *) window;

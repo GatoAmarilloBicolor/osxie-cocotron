@@ -60,6 +60,8 @@ typedef NS_ENUM(NSInteger, NSTextLayoutOrientation) {
 
     NSUInteger _rectCacheCapacity, _rectCacheCount;
     NSRect *_rectCache;
+
+    CGFloat _hyphenationFactor;
 }
 
 - init;
@@ -82,6 +84,9 @@ typedef NS_ENUM(NSInteger, NSTextLayoutOrientation) {
 
 - (BOOL) usesScreenFonts;
 - (void) setUsesScreenFonts: (BOOL) yorn;
+
+- (CGFloat) hyphenationFactor;
+- (void) setHyphenationFactor: (CGFloat) factor;
 
 - (void) addTextContainer: (NSTextContainer *) container;
 - (void) removeTextContainerAtIndex: (NSUInteger) index;
@@ -193,6 +198,7 @@ typedef NS_ENUM(NSInteger, NSTextLayoutOrientation) {
                           rectCount: (NSUInteger *) rectCount;
 
 - (NSUInteger) characterIndexForGlyphAtIndex: (NSUInteger) glyphIndex;
+- (NSUInteger) glyphIndexForCharacterAtIndex: (NSUInteger) characterIndex;
 - (NSRange) characterRangeForGlyphRange: (NSRange) glyphRange
                        actualGlyphRange: (NSRange *) actualGlyphRange;
 - (NSRect *) rectArrayForCharacterRange: (NSRange) characterRange

@@ -93,11 +93,36 @@ static Class _rulerViewClass = nil;
                        controlSize: (NSControlSize) controlSize
                      scrollerStyle: (NSScrollerStyle) scrollerStyle
 {
-    NSUnimplementedMethod();
-    return [self frameSizeForContentSize: cSize
-                   hasHorizontalScroller: YES
-                     hasVerticalScroller: YES
-                              borderType: type];
+    CGFloat scrollerWidth =
+            [NSScroller scrollerWidthForControlSize: controlSize
+                                       scrollerStyle: scrollerStyle];
+
+    if (horizontalScrollerClass != Nil)
+        cSize.height += scrollerWidth;
+    if (verticalScrollerClass != Nil)
+        cSize.width += scrollerWidth;
+
+    switch (type) {
+    case NSNoBorder:
+        break;
+
+    case NSLineBorder:
+        cSize.height += 1;
+        cSize.width += 1;
+        break;
+
+    case NSBezelBorder:
+        cSize.height += 2;
+        cSize.width += 2;
+        break;
+
+    case NSGrooveBorder:
+        cSize.height += 2;
+        cSize.width += 2;
+        break;
+    }
+
+    return cSize;
 }
 
 + (NSSize) contentSizeForFrameSize: (NSSize) frameSize
@@ -137,11 +162,14 @@ static Class _rulerViewClass = nil;
 + (NSSize) contentSizeForFrameSize: (NSSize) fSize
            horizontalScrollerClass: (Class) horizontalScrollerClass
              verticalScrollerClass: (Class) verticalScrollerClass
-                        borderType: (NSBorderType) type
-                       controlSize: (NSControlSize) controlSize
-                     scrollerStyle: (NSScrollerStyle) scrollerStyle
+                         borderType: (NSBorderType) type
+                        controlSize: (NSControlSize) controlSize
+                      scrollerStyle: (NSScrollerStyle) scrollerStyle
 {
-    NSUnimplementedMethod();
+    return [self contentSizeForFrameSize: fSize
+                   hasHorizontalScroller: YES
+                     hasVerticalScroller: YES
+                              borderType: type];
 }
 
 + (void) setRulerViewClass: (Class) class {
@@ -652,6 +680,30 @@ static Class _rulerViewClass = nil;
 
 - (BOOL) allowsMagnification {
     return _allowsMagnification;
+}
+
+- (NSScrollerStyle) scrollerStyle {
+    return _scrollerStyle;
+}
+
+- (void) setScrollerStyle: (NSScrollerStyle) style {
+    _scrollerStyle = style;
+}
+
+- (NSScrollViewElasticity) verticalScrollElasticity {
+    return _verticalScrollElasticity;
+}
+
+- (NSScrollViewElasticity) horizontalScrollElasticity {
+    return _horizontalScrollElasticity;
+}
+
+- (void) setVerticalScrollElasticity: (NSScrollViewElasticity) elasticity {
+    _verticalScrollElasticity = elasticity;
+}
+
+- (void) setHorizontalScrollElasticity: (NSScrollViewElasticity) elasticity {
+    _horizontalScrollElasticity = elasticity;
 }
 
 - (void) setDocumentView: (NSView *) view {

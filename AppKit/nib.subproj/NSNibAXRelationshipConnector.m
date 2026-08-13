@@ -17,12 +17,23 @@
 @implementation NSNibAXAttributeConnector
 
 - (void) encodeWithCoder: (NSCoder *) aCoder {
-    printf("STUB %s\n", __PRETTY_FUNCTION__);
+    [super encodeWithCoder: aCoder];
 }
 
 - (id) initWithCoder: (NSCoder *) coder {
-    printf("STUB %s\n", __PRETTY_FUNCTION__);
+    if (self = [super initWithCoder: coder]) {
+        if ([coder allowsKeyedCoding]) {
+            NSKeyedUnarchiver *keyed = (NSKeyedUnarchiver *) coder;
+            NSString *label = [keyed decodeObjectForKey: @"NSLabel"];
+            if (label != nil)
+                [self setLabel: label];
+        }
+    }
     return self;
+}
+
+- (void) establishConnection {
+    // Accessibility bindings are not supported; nothing to connect.
 }
 
 @end

@@ -228,6 +228,18 @@ id _NSTabViewFloatingCell = nil;
     _font = font;
 }
 
+- (NSControlSize) controlSize {
+    return _controlSize;
+}
+
+- (void) setControlSize: (NSControlSize) controlSize {
+    _controlSize = controlSize;
+    NSFont *font = [[NSFont boldSystemFontOfSize: 13 - _controlSize * 2] retain];
+    [_font release];
+    _font = font;
+    [self setNeedsDisplay: YES];
+}
+
 - (void) setTabViewType: (NSTabViewType) type {
     _type = type;
     [self setNeedsDisplay: YES];

@@ -29,6 +29,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return [NSImageCell class];
 }
 
++ (NSImageView *) imageViewWithImage: (NSImage *) image {
+    NSImageView *view = [[self alloc] initWithFrame: NSMakeRect(0, 0, 0, 0)];
+    [view setImage: image];
+    return [view autorelease];
+}
+
 - target {
     return _target;
 }

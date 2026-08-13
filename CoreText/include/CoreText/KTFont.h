@@ -34,6 +34,7 @@ enum { CGNullGlyph = 0x0 };
                 size: (CGFloat) size
             language: (NSString *) language;
 
+- (CGFontRef) cgFont;
 - (CFStringRef) copyName;
 - (CGFloat) pointSize;
 - (CGFloat) fontSize;

@@ -34,19 +34,46 @@
             language: (NSString *) language
 {
     O2Font *font = nil;
+    NSString *fontName = @"San Francisco";
+    CGFloat defaultSize = 12;
 
     switch (uiFontType) {
+    case kCTFontUIFontSystem:
+    case kCTFontUIFontEmphasizedSystem:
+    case kCTFontUIFontSystemDetail:
+    case kCTFontUIFontEmphasizedSystemDetail:
+    case kCTFontUIFontMenuTitle:
+    case kCTFontUIFontMenuItem:
+        defaultSize = 12;
+        break;
 
-    case kCTFontMenuTitleFontType:
-    case kCTFontMenuItemFontType:
-        if (size == 0)
-            size = 12;
-        font = O2FontCreateWithFontName(@"San Francisco");
+    case kCTFontUIFontSmallSystem:
+    case kCTFontUIFontSmallEmphasizedSystem:
+    case kCTFontUIFontSmallToolbar:
+        defaultSize = 11;
+        break;
+
+    case kCTFontUIFontMiniSystem:
+    case kCTFontUIFontMiniEmphasizedSystem:
+        defaultSize = 10;
+        break;
+
+    case kCTFontUIFontUserFixedPitch:
+        fontName = @"Monaco";
+        defaultSize = 12;
         break;
 
     default:
-        return nil;
+        break;
     }
+
+    if (size == 0)
+        size = defaultSize;
+
+    font = O2FontCreateWithFontName(fontName);
+
+    if (font == nil)
+        return nil;
 
     self = [self initWithFont: (CGFontRef)font size: size];
 

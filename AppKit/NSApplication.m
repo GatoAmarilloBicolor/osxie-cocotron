@@ -43,6 +43,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <pthread.h>
 #import <stdio.h>
 #import <stdarg.h>
+#import <signal.h>
+#import <execinfo.h>
+#import <unistd.h>
+#import <unwind.h>
+#import <string.h>
+#import <fcntl.h>
 
 static void osxieAppLog(const char *fmt, ...) {
     va_list ap;
@@ -972,7 +978,7 @@ NSApplication *NSApp = nil;
 }
 
 - (void) activateIgnoringOtherApps: (BOOL) flag {
-    NSUnimplementedMethod();
+    [_keyWindow makeKeyWindow];
 }
 
 - (void) deactivate {
@@ -1518,6 +1524,22 @@ NSApplication *NSApp = nil;
     return _dockTile;
 }
 
+- (NSAppearance *) effectiveAppearance {
+    return [NSAppearance currentAppearance];
+}
+
+- (void) setEffectiveAppearance: (NSAppearance *) appearance {
+}
+
+- (BOOL) shouldRestoreStateOnNextLaunch {
+    return NO;
+}
+
+- (void) setShouldRestoreStateOnNextLaunch: (BOOL) flag {
+}
+
+@synthesize appearance = _appearance;
+
 - (void) doCommandBySelector: (SEL) selector {
     if ([_delegate respondsToSelector: selector])
         [_delegate performSelector: selector withObject: nil];
@@ -1669,10 +1691,88 @@ NSApplication *NSApp = nil;
 
 @end
 
+static void _osxie_putnum(uintptr_t v) {
+    char buf[24];
+    memset(buf, 0, sizeof(buf));
+    int i = sizeof(buf) - 1;
+    if (v == 0)
+        buf[--i] = '0';
+    while (v > 0) {
+        buf[--i] = "0123456789abcdef"[v & 0xF];
+        v >>= 4;
+    }
+    buf[--i] = 'x';
+    buf[--i] = '0';
+    write(2, buf + i, sizeof(buf) - i);
+}
+
+static void _osxie_putdec(uintptr_t v) {
+    char buf[24];
+    memset(buf, 0, sizeof(buf));
+    int i = sizeof(buf) - 1;
+    if (v == 0)
+        buf[--i] = '0';
+    while (v > 0) {
+        buf[--i] = '0' + (v % 10);
+        v /= 10;
+    }
+    write(2, buf + i, sizeof(buf) - i);
+}
+
+static void _osxie_dump_maps(void) {
+    int fd = open("/proc/self/maps", O_RDONLY);
+    if (fd < 0)
+        return;
+    char buf[4096];
+    ssize_t n;
+    while ((n = read(fd, buf, sizeof(buf))) > 0)
+        write(2, buf, n);
+    close(fd);
+}
+
+static _Unwind_Reason_Code _osxie_unwind_trace(struct _Unwind_Context *ctx,
+                                               void *arg) {
+    int *count = (int *) arg;
+    if (*count >= 48)
+        return _URC_END_OF_STACK;
+    write(2, "    #", 5);
+    _osxie_putdec(*count);
+    write(2, " ip=", 4);
+    _osxie_putnum(_Unwind_GetIP(ctx));
+    write(2, "\n", 1);
+    (*count)++;
+    return _URC_NO_REASON;
+}
+
+static void _osxie_signal_backtrace(int sig) {
+    int count = 0;
+    const char *name = (sig == SIGABRT) ? "SIGABRT"
+                       : (sig == SIGSEGV) ? "SIGSEGV"
+                       : (sig == SIGILL) ? "SIGILL" : "signal";
+    fprintf(stderr, "\n=== OSXIE %s (pid %d) backtrace ===\n", name, getpid());
+    _Unwind_Backtrace(_osxie_unwind_trace, &count);
+    fprintf(stderr, "=== end backtrace (%d frames) ===\n", count);
+    fprintf(stderr, "=== /proc/self/maps ===\n");
+    _osxie_dump_maps();
+    fprintf(stderr, "=== end maps ===\n");
+    _exit(128 + sig);
+}
+
 int NSApplicationMain(int argc, const char *argv[]) {
 #if !defined(DARLING) && !defined(OSXIE)
     __NSInitializeProcess(argc, argv);
 #endif
+
+    if (getenv("OSXIE_TRACE_SIG")) {
+        struct sigaction sa;
+        sa.sa_flags = 0;
+        sigemptyset(&sa.sa_mask);
+        sa.sa_handler = _osxie_signal_backtrace;
+        sigaction(SIGABRT, &sa, NULL);
+        sigaction(SIGSEGV, &sa, NULL);
+        sigaction(SIGILL, &sa, NULL);
+        fprintf(stderr, "[SIG] signal backtrace handler installed\n");
+    }
 
     if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] NSApplicationMain begin bundle-load & nib initialization\n");
     NSAutoreleasePool *pool = [NSAutoreleasePool new];

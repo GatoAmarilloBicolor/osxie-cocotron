@@ -48,6 +48,7 @@
 -(CGSWindow*) newWindow:(CGSRegionRef)region;
 
 -(void) processPendingEvents;
+-(Display*) display;
 
 +(BOOL) isAvailable;
 

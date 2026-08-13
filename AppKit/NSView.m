@@ -73,6 +73,7 @@ const NSViewFullScreenModeOptionKey NSFullScreenModeApplicationPresentationOptio
 @synthesize identifier = _identifier;
 @synthesize translatesAutoresizingMaskIntoConstraints = _translatesAutoresizingMaskIntoConstraints;
 @synthesize appearance = _appearance;
+@synthesize accessibilityLabel = _accessibilityLabel;
 
 - (NSAppearance *) effectiveAppearance {
     if (_appearance != nil) {
@@ -422,6 +423,7 @@ typedef struct __VFlags {
     _invalidRectCount = 0;
     _invalidRects = NULL;
     _trackingAreas = [[NSMutableArray alloc] init];
+    _alphaValue = 1.0;
 
     _validTransforms = NO;
     _transformFromWindow = CGAffineTransformIdentity;
@@ -467,6 +469,8 @@ typedef struct __VFlags {
     [_layerContext release];
 
     [_identifier release];
+
+    [_accessibilityLabel release];
 
     [super dealloc];
 }
@@ -732,12 +736,12 @@ static inline void buildTransformsIfNeeded(NSView *self) {
 }
 
 - (CGFloat) alphaValue {
-    NSUnimplementedMethod();
-    return 0.;
+    return _alphaValue;
 }
 
 - (void) setAlphaValue: (CGFloat) alpha {
-    NSUnimplementedMethod();
+    _alphaValue = alpha;
+    [self setNeedsDisplay];
 }
 
 - (int) gState {
@@ -1317,12 +1321,10 @@ static inline void buildTransformsIfNeeded(NSView *self) {
 }
 
 - (BOOL) wantsRestingTouches {
-    NSUnimplementedMethod();
     return NO;
 }
 
 - (void) setWantsRestingTouches: (BOOL) wants {
-    NSUnimplementedMethod();
 }
 
 - (void) setToolTip: (NSString *) string {
@@ -2059,6 +2061,10 @@ static void clearNeedsDisplay(NSView *self) {
     self->_needsDisplay = NO;
 }
 
+- (void) setNeedsDisplay {
+    [self setNeedsDisplay: YES];
+}
+
 - (void) setNeedsDisplay: (BOOL) flag {
     _needsDisplay = flag;
 
@@ -2122,8 +2128,7 @@ static NSView *viewBeingPrinted = nil;
 }
 
 - (BOOL) canDrawConcurrently {
-    NSUnimplementedMethod();
-    return NO;
+    return _canDrawConcurrently;
 }
 
 - (void) viewWillDraw {
@@ -2131,7 +2136,7 @@ static NSView *viewBeingPrinted = nil;
 }
 
 - (void) setCanDrawConcurrently: (BOOL) canDraw {
-    NSUnimplementedMethod();
+    _canDrawConcurrently = canDraw;
 }
 
 - (void) _lockFocusInContext: (NSGraphicsContext *) context {
@@ -2851,7 +2856,6 @@ static NSView *viewBeingPrinted = nil;
 }
 
 - animator {
-    NSUnimplementedMethod();
     // should return animating proxy. returning self does not animate.
     return self;
 }
@@ -2931,6 +2935,13 @@ static NSView *viewBeingPrinted = nil;
     } else {
         _verticalContentCompressionResistancePriority = contentCompressionResistancePriority;
     }
+}
+
+- (NSSize) intrinsicContentSize {
+    return NSMakeSize(NSViewNoIntrinsicMetric, NSViewNoIntrinsicMetric);
+}
+
+- (void) invalidateIntrinsicContentSize {
 }
 
 @end

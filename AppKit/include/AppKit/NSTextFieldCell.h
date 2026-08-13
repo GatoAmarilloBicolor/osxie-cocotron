@@ -31,9 +31,17 @@ typedef enum {
     NSTextFieldBezelStyle _bezelStyle;
     id _placeholder;
     NSArray<NSString *> *_allowedInputSourceLocales;
+    NSMenu *_searchMenuTemplate;
+    BOOL _allowsDefaultTighteningForTruncation;
 }
 
 @property(copy) NSArray<NSString *> *allowedInputSourceLocales;
+
+- (NSMenu *) searchMenuTemplate;
+- (void) setSearchMenuTemplate: (NSMenu *) menu;
+
+- (BOOL) allowsDefaultTighteningForTruncation;
+- (void) setAllowsDefaultTighteningForTruncation: (BOOL) flag;
 
 - (NSColor *) backgroundColor;
 - (NSColor *) textColor;

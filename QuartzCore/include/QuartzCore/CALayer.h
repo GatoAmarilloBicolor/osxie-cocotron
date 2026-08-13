@@ -75,6 +75,18 @@ CA_EXPORT NSString *const kCAContentsFormatGray8Uint;
     CATransform3D _sublayerTransform;
     NSString *_minificationFilter;
     NSString *_magnificationFilter;
+    NSString *_contentsGravity;
+    NSDictionary *_actions;
+    CGColorRef _backgroundColor;
+    CGColorRef _borderColor;
+    CGFloat _borderWidth;
+    CGFloat _contentsScale;
+    CGFloat _cornerRadius;
+    BOOL _hidden;
+    CALayer *_mask;
+    BOOL _masksToBounds;
+    NSString *_name;
+    BOOL _needsLayout;
     BOOL _needsDisplay;
     NSMutableDictionary *_animations;
     NSNumber *_textureId;
@@ -97,6 +109,20 @@ CA_EXPORT NSString *const kCAContentsFormatGray8Uint;
 
 @property(copy) NSString *minificationFilter;
 @property(copy) NSString *magnificationFilter;
+@property(copy) NSString *contentsGravity;
+
+@property(copy) NSDictionary *actions;
+
+@property CGColorRef backgroundColor;
+@property CGColorRef borderColor;
+@property CGFloat borderWidth;
+@property CGFloat contentsScale;
+@property CGFloat cornerRadius;
+@property(getter=isHidden) BOOL hidden;
+@property(assign) CALayer *mask;
+@property BOOL masksToBounds;
+@property(copy) NSString *name;
+@property(readonly) BOOL needsLayout;
 
 - init;
 
@@ -109,6 +135,7 @@ CA_EXPORT NSString *const kCAContentsFormatGray8Uint;
 - (void) removeFromSuperlayer;
 - (void) setNeedsDisplay;
 - (void) setNeedsDisplayInRect: (CGRect) rect;
+- (void) setNeedsLayout;
 
 - (void) addAnimation: (CAAnimation *) animation forKey: (NSString *) key;
 - (CAAnimation *) animationForKey: (NSString *) key;

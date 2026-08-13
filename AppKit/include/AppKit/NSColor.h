@@ -29,6 +29,7 @@ typedef NSString *NSColorSpaceName;
 
 @class NSImage;
 @class NSPasteboard;
+@class NSColorSpace;
 
 @interface NSColor : NSObject <NSCopying, NSCoding> {
     NSColorListName _catalogName;
@@ -58,6 +59,7 @@ typedef NSString *NSColorSpaceName;
 
 @property(class, strong, readonly) NSColor *controlColor;
 @property(class, strong, readonly) NSColor *controlBackgroundColor;
+@property(class, strong, readonly) NSColor *controlAccentColor;
 @property(class, strong, readonly) NSColor *controlTextColor;
 @property(class, strong, readonly) NSColor *disabledControlTextColor;
 @property(class, strong, readonly) NSColor *selectedControlColor;
@@ -82,6 +84,7 @@ typedef NSString *NSColorSpaceName;
 @property(class, strong, readonly) NSColor *secondarySelectedControlColor;
 @property(class, strong, readonly) NSColor *selectedMenuItemColor;
 @property(class, strong, readonly) NSColor *windowFrameColor;
+@property(class, strong, readonly) NSColor *windowFrameTextColor;
 
 @property(class, strong, readonly) NSColor *clearColor;
 
@@ -159,6 +162,7 @@ typedef NSString *NSColorSpaceName;
 
 + (NSColor *) windowBackgroundColor;
 + (NSColor *) windowFrameColor;
++ (NSColor *) windowFrameTextColor;
 
 + (NSColor *) selectedMenuItemColor;
 + (NSColor *) selectedMenuItemTextColor;
@@ -219,6 +223,15 @@ typedef NSString *NSColorSpaceName;
                           brightness: (CGFloat) brightness
                                alpha: (CGFloat) alpha;
 
++ (NSColor *) colorWithHue: (CGFloat) hue
+                saturation: (CGFloat) saturation
+                brightness: (CGFloat) brightness
+                     alpha: (CGFloat) alpha;
+
++ (NSColor *) colorWithColorSpace: (NSColorSpace *) colorSpace
+                       components: (const CGFloat *) components
+                            count: (NSInteger) count;
+
 + (NSColor *) colorWithGenericGamma22White:(CGFloat) white 
                                      alpha:(CGFloat) alpha;
 
@@ -271,6 +284,10 @@ typedef NSString *NSColorSpaceName;
 - (NSColor *) colorUsingColorSpaceName: (NSString *) colorSpace;
 - (NSColor *) colorUsingColorSpaceName: (NSString *) colorSpace
                                 device: (NSDictionary *) device;
+
+- (NSColor *) colorUsingColorSpace: (NSColorSpace *) colorSpace;
+
+- (NSColorSpace *) colorSpace;
 
 - (NSColor *) blendedColorWithFraction: (CGFloat) fraction
                                ofColor: (NSColor *) color;

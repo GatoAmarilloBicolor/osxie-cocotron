@@ -1247,4 +1247,15 @@ static void loadGlyphAndCharacterCacheForLocation(NSTypesetter_concrete *self,
         free(bidiLevels);
     }
 }
+
+- (CGFloat) baselineOffsetInLayoutManager: (NSLayoutManager *) layoutManager
+                               glyphIndex: (NSUInteger) glyphIndex
+{
+    if (_font == nil) {
+        _font = NSFontAttributeInDictionary(nil);
+        _fontAscender = ceilf([_font ascender]);
+        _fontDefaultLineHeight = ceilf([_font defaultLineHeightForFont]);
+    }
+    return _fontAscender;
+}
 @end

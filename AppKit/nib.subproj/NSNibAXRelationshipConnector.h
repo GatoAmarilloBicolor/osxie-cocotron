@@ -5,5 +5,8 @@
 
 @end
 
-@interface NSNibAXAttributeConnector : NSObject <NSCoding>
+@interface NSNibAXAttributeConnector : NSNibConnector {
+}
+- (void) setLabel: (NSString *) label;
+
 @end

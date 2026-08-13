@@ -86,15 +86,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     NSView *menuView = nil;
     NSToolbarView *toolbarView = nil;
     NSView *contentView = nil;
+    NSMutableArray *accessories = [NSMutableArray array];
 
     // tile the subviews, when/if we add titlebars and such do it here
     for (NSView *view in _subviews) {
-        if ([view isKindOfClass: [NSMenuView class]])
+        if ([view isKindOfClass: [_NSTitlebarAccessoryContainer class]])
+            [accessories addObject: view];
+        else if ([view isKindOfClass: [NSMenuView class]])
             menuView = view;
         else if ([view isKindOfClass: [NSToolbarView class]])
             toolbarView = (NSToolbarView *) view;
         else
             contentView = view;
+    }
+
+    CGFloat accessoryHeight = 0.0;
+    for (_NSTitlebarAccessoryContainer *accessory in accessories) {
+        accessoryHeight += [accessory accessoryHeight];
     }
 
     // subtracts menu height but not toolbar height
@@ -116,19 +124,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     NSRect toolbarFrame =
             (toolbarView != nil) ? [toolbarView frame] : NSZeroRect;
 
-    menuFrame.origin.y = NSMaxY(contentFrame);
+    // Titlebar accessories are stacked at the very top of the window,
+    // downward. The menu, toolbar and content view take the remaining space.
+    CGFloat accessoryOriginY = NSMaxY([self bounds]);
+    for (_NSTitlebarAccessoryContainer *accessory in accessories) {
+        CGFloat height = [accessory accessoryHeight];
+        accessoryOriginY -= height;
+        [accessory setFrame: NSMakeRect(0.0, accessoryOriginY,
+                [self bounds].size.width, height)];
+    }
+
+    // Top of the area available to menu/toolbar/content.
+    CGFloat contentTop = NSMaxY(contentFrame) - accessoryHeight;
+
+    menuFrame.origin.y = contentTop;
     menuFrame.origin.x = contentFrame.origin.x;
     menuFrame.size.width = contentFrame.size.width;
     [menuView setFrame: menuFrame];
 
-    toolbarFrame.origin.y = NSMaxY(contentFrame) - toolbarFrame.size.height;
+    toolbarFrame.origin.y = contentTop - toolbarFrame.size.height;
     toolbarFrame.origin.x = contentFrame.origin.x;
     toolbarFrame.size.width = contentFrame.size.width;
 
     [toolbarView setFrame: toolbarFrame];
     [toolbarView layoutViews];
 
-    contentFrame.size.height -= toolbarFrame.size.height;
+    contentFrame.size.height -= toolbarFrame.size.height + accessoryHeight;
     [contentView setFrame: contentFrame];
 }
 

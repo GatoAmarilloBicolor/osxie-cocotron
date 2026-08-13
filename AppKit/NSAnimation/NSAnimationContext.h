@@ -21,6 +21,8 @@
 #import <Foundation/NSObject.h>
 
 @interface NSAnimationContext : NSObject <NSCopying> {
+    NSTimeInterval _duration;
+    id _timingFunction;
 }
 
 + (void) beginGrouping;
@@ -30,5 +32,8 @@
 
 - (void) setDuration: (NSTimeInterval) duration;
 - (NSTimeInterval) duration;
+
+- (id) timingFunction;
+- (void) setTimingFunction: (id) function;
 
 @end

@@ -657,8 +657,7 @@ static CGFloat constrainTo(CGFloat value, CGFloat min, CGFloat max) {
 }
 
 - (BOOL) isOpaque {
-    NSUnimplementedMethod();
-    return YES;
+    return NO;
 }
 
 @end

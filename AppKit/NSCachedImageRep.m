@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSWindow-Private.h>
 #import <AppKit/NSWindow.h>
 #import <CoreGraphics/CGWindow.h>
+#import <stdlib.h>
 
 @implementation NSCachedImageRep
 
@@ -29,6 +30,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     _size = rect.size;
     _window = [window retain];
     _origin = rect.origin;
+
+    if (getenv("OSXIE_TRACE_WINDOW_LIFE"))
+        fprintf(stderr, "[LIFE] NSCachedImageRep init: self=%p window=%p\n",
+                self, _window);
 
     // This is a little broken, the windows get resized to larger size when
     // on-screen.
@@ -64,6 +69,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (void) dealloc {
+    if (getenv("OSXIE_TRACE_WINDOW_LIFE"))
+        fprintf(stderr, "[LIFE] NSCachedImageRep dealloc: self=%p window=%p\n",
+                self, _window);
     [_window release];
     [super dealloc];
 }

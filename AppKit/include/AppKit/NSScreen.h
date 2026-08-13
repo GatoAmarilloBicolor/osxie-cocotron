@@ -47,6 +47,8 @@ typedef NSString *NSDeviceDescriptionKey;
 
 - (CGFloat) userSpaceScaleFactor;
 
+- (CGFloat) backingScaleFactor;
+
 @end
 
 @interface NSScreen (Darling)

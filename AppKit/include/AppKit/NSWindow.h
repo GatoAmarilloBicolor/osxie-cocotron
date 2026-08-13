@@ -32,7 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
         NSText, NSTextView, CGWindow, NSPasteboard, NSSheetContext,
         NSUndoManager, NSButton, NSButtonCell, NSDrawer, NSDockTile, NSToolbar,
         NSWindowAnimationContext, NSTrackingArea, NSThemeFrame,
-        NSWindowController, NSMenuItem, CARenderer;
+        NSWindowController, NSMenuItem, NSTitlebarAccessoryViewController,
+        CARenderer;
 @protocol NSWindowDelegate;
 
 // Old NSWindowStyleMask constants
@@ -88,6 +89,10 @@ typedef NS_ENUM(NSUInteger, NSWindowBackingLocation) {
     NSWindowBackingLocationMainMemory = 0x02
 };
 
+typedef NS_OPTIONS(NSUInteger, NSWindowOcclusionState) {
+    NSWindowOcclusionStateVisible = 1UL << 1
+};
+
 enum {
     NSNormalWindowLevel = kCGNormalWindowLevel,
     NSFloatingWindowLevel = kCGFloatingWindowLevel,
@@ -116,6 +121,21 @@ typedef NS_ENUM(NSUInteger, NSWindowSharingType) {
     NSWindowSharingNone = 0x00,
     NSWindowSharingReadOnly = 0x01,
     NSWindowSharingReadWrite = 0x02
+};
+
+typedef NS_ENUM(NSUInteger, NSWindowTitlebarSeparatorStyle) {
+    NSTitlebarSeparatorStyleAutomatic = 0,
+    NSTitlebarSeparatorStyleLine = 1,
+    NSTitlebarSeparatorStyleShadow = 2,
+    NSTitlebarSeparatorStyleNone = 3,
+};
+
+typedef NS_ENUM(NSInteger, NSWindowToolbarStyle) {
+    NSWindowToolbarStyleAutomatic = 0,
+    NSWindowToolbarStyleExpanded = 1,
+    NSWindowToolbarStylePreference = 2,
+    NSWindowToolbarStyleUnified = 3,
+    NSWindowToolbarStyleUnifiedCompact = 4,
 };
 
 typedef int NSSelectionDirection;
@@ -162,6 +182,7 @@ APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
     NSMutableArray<NSWindow *> *_childWindows;
 
     NSString *_representedFilename;
+    NSURL *_representedURL;
     NSString *_title;
     NSString *_miniwindowTitle;
     NSImage *_miniwindowImage;
@@ -217,6 +238,8 @@ APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
     BOOL _showsToolbarButton;
     BOOL _ignoresMouseEvents;
     BOOL _isMovableByWindowBackground;
+    BOOL _movable;
+    NSWindowCollectionBehavior _collectionBehavior;
     BOOL _allowsToolTipsWhenApplicationIsInactive;
     BOOL _defaultButtonCellKeyEquivalentDisabled;
     BOOL _autorecalculatesKeyViewLoop;
@@ -239,6 +262,10 @@ APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
     NSWindowController *_windowController;
     NSMutableArray *_drawers;
     NSToolbar *_toolbar;
+    NSMutableArray *_titlebarAccessoryViewControllers;
+    BOOL _titlebarAppearsTransparent;
+    NSUInteger _titlebarSeparatorStyle;
+    NSInteger _toolbarStyle;
     NSWindowAnimationContext *_animationContext;
 
     NSRect _savedFrame;
@@ -247,9 +274,22 @@ APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
     NSUserInterfaceItemIdentifier _identifier;
 
     BOOL _isAccessible;
+    BOOL _isRestorable;
+    Class _restorationClass;
+    NSAppearance *_appearance;
 }
 
 @property(class) BOOL allowsAutomaticWindowTabbing;
+
+- (NSAppearance *) appearance;
+- (void) setAppearance: (NSAppearance *) appearance;
+- (NSAppearance *) effectiveAppearance;
+
+- (BOOL) isRestorable;
+- (void) setRestorable: (BOOL) flag;
+
+- (Class) restorationClass;
+- (void) setRestorationClass: (Class) cls;
 
 + (NSWindowDepth) defaultDepthLimit;
 
@@ -286,6 +326,7 @@ APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
 - (void *) windowRef;
 - (BOOL) allowsConcurrentViewDrawing;
 - (void) setAllowsConcurrentViewDrawing: (BOOL) allows;
+- (CGFloat) backingScaleFactor;
 
 - (NSView *) contentView;
 - (id<NSWindowDelegate>) delegate;
@@ -348,6 +389,10 @@ APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
 - (NSSize) contentResizeIncrements;
 - (BOOL) preservesContentDuringLiveResize;
 - (NSToolbar *) toolbar;
+- (NSArray *) titlebarAccessoryViewControllers;
+- (BOOL) titlebarAppearsTransparent;
+- (NSWindowTitlebarSeparatorStyle) titlebarSeparatorStyle;
+- (NSWindowToolbarStyle) toolbarStyle;
 - (NSView *) initialFirstResponder;
 
 - (void) setDelegate: (id<NSWindowDelegate>) delegate;
@@ -385,6 +430,13 @@ APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
 - (void) setBackgroundColor: (NSColor *) color;
 - (void) setAlphaValue: (CGFloat) value;
 - (void) setToolbar: (NSToolbar *) toolbar;
+- (void) setTitlebarAccessoryViewControllers: (NSArray *) controllers;
+- (void) addTitlebarAccessoryViewController: (NSTitlebarAccessoryViewController *) controller;
+- (void) removeTitlebarAccessoryViewController: (NSTitlebarAccessoryViewController *) controller;
+- (void) removeTitlebarAccessoryViewControllerAtIndex: (NSUInteger) index;
+- (void) setTitlebarAppearsTransparent: (BOOL) value;
+- (void) setTitlebarSeparatorStyle: (NSWindowTitlebarSeparatorStyle) style;
+- (void) setToolbarStyle: (NSWindowToolbarStyle) style;
 - (void) setDefaultButtonCell: (NSButtonCell *) cell;
 - (void) setWindowController: (NSWindowController *) value;
 - (void) setDocumentEdited: (BOOL) flag;
@@ -425,6 +477,7 @@ APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
 - (NSButton *) standardWindowButton: (NSWindowButton) value;
 - (NSButtonCell *) defaultButtonCell;
 - (NSWindow *) attachedSheet;
+- (NSArray *) sheets;
 
 - (id) windowController;
 - (NSArray *) drawers;
@@ -458,6 +511,10 @@ APPKIT_EXPORT const NSNotificationName NSWindowDidExposeNotification;
 
 - (NSPoint) convertBaseToScreen: (NSPoint) point;
 - (NSPoint) convertScreenToBase: (NSPoint) point;
+- (NSPoint) convertPointFromScreen: (NSPoint) point;
+- (NSPoint) convertPointToScreen: (NSPoint) point;
+- (NSRect) convertRectFromScreen: (NSRect) rect;
+- (NSRect) convertRectToScreen: (NSRect) rect;
 
 - (NSRect) frameRectForContentRect: (NSRect) rect;
 - (NSRect) contentRectForFrameRect: (NSRect) rect;

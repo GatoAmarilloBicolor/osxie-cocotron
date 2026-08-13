@@ -169,3 +169,16 @@ function(add_backend name)
 endfunction(add_backend)
 
 add_subdirectory(X11.backend)
+
+include(osxie_exe)
+
+add_osxie_executable(cgs_smoke
+	cgs_smoke.m
+)
+
+target_link_libraries(cgs_smoke
+	CoreGraphics
+	CoreFoundation
+	Foundation
+	X11
+)

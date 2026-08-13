@@ -603,6 +603,7 @@ add_backend(X11
 		X11.backend/X11Pasteboard.m
 		X11.backend/X11Cursor.m
 		X11.backend/X11KeySymToUCS.m
+		X11.backend/X11Theme.m
 	INFO_PLIST
 		X11.backend/Info.plist
 	DEPENDENCIES

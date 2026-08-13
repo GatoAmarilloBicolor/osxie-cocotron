@@ -26,8 +26,7 @@
 
 - (NSImage *) iconForFileType: (NSString *) type {
     // TODO: call GetIconRefFromTypeInfo()
-    NSUnimplementedMethod();
-    return NULL;
+    return nil;
 }
 
 - (NSString *) localizedDescriptionForType: (NSString *) type {

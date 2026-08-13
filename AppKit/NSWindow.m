@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSSheetContext.h>
 #import <AppKit/NSTextView.h>
 #import <AppKit/NSThemeFrame.h>
+#import <AppKit/NSTitlebarAccessoryViewController.h>
 #import <AppKit/NSToolTipWindow.h>
 #import <AppKit/NSToolbar.h>
 #import <AppKit/NSTrackingArea.h>
@@ -131,9 +132,44 @@ NSInteger NSBitsPerPixelFromDepth(NSWindowDepth depth) {
 - (void) layoutFrameSizeWithWidth: (CGFloat) width;
 @end
 
+@interface NSTitlebarAccessoryViewController (private)
+- (void) _setWindow: (NSWindow *) window;
+@end
+
 @interface NSWindow ()
 
 - (NSRect) zoomedFrame;
+
+@end
+
+@implementation _NSTitlebarAccessoryContainer
+
+- (instancetype) initWithController: (NSTitlebarAccessoryViewController *) controller {
+    if (self = [super initWithFrame: NSZeroRect]) {
+        _controller = controller; // weak
+    }
+    return self;
+}
+
+- (NSTitlebarAccessoryViewController *) controller {
+    return _controller;
+}
+
+- (CGFloat) accessoryHeight {
+    NSView *view = [_controller view];
+
+    if (view == nil || [_controller isHidden]) {
+        return 0.0;
+    }
+
+    if ([view frame].size.height > 0) {
+        return [view frame].size.height;
+    }
+
+    // A reasonable default height for a titlebar accessory strip (tab bar,
+    // search field, ...) when the view reports no size of its own yet.
+    return 28.0;
+}
 
 @end
 
@@ -209,6 +245,39 @@ NSInteger NSBitsPerPixelFromDepth(NSWindowDepth depth) {
 @synthesize identifier = _identifier;
 @synthesize accessibilityElement = _isAccessible;
 
+- (NSAppearance *) appearance {
+    return _appearance;
+}
+
+- (void) setAppearance: (NSAppearance *) appearance {
+    appearance = [appearance retain];
+    [_appearance release];
+    _appearance = appearance;
+}
+
+- (NSAppearance *) effectiveAppearance {
+    if (_appearance != nil) {
+        return _appearance;
+    }
+    return [NSAppearance currentAppearance];
+}
+
+- (BOOL) isRestorable {
+    return _isRestorable;
+}
+
+- (void) setRestorable: (BOOL) flag {
+    _isRestorable = flag;
+}
+
+- (Class) restorationClass {
+    return _restorationClass;
+}
+
+- (void) setRestorationClass: (Class) cls {
+    _restorationClass = cls;
+}
+
 static BOOL _allowsAutomaticWindowTabbing;
 
 + (NSWindowDepth) defaultDepthLimit {
@@ -277,8 +346,27 @@ static BOOL _allowsAutomaticWindowTabbing;
 + (NSButton *) standardWindowButton: (NSWindowButton) button
                        forStyleMask: (NSWindowStyleMask) styleMask
 {
-    NSUnimplementedMethod();
-    return nil;
+    NSButton *result = [[[NSButton alloc] initWithFrame:
+            NSMakeRect(0, 0, 14, 14)] autorelease];
+    [result setBezelStyle: NSRoundedBezelStyle];
+    [result setButtonType: NSMomentaryPushInButton];
+
+    switch (button) {
+    case NSWindowCloseButton:
+        [result setTitle: @"x"];
+        break;
+    case NSWindowMiniaturizeButton:
+        [result setTitle: @"-"];
+        break;
+    case NSWindowZoomButton:
+        [result setTitle: @"+"];
+        break;
+    default:
+        [result setTitle: @""];
+        break;
+    }
+
+    return result;
 }
 
 + (void) menuChanged: (NSMenu *) menu {
@@ -337,6 +425,7 @@ static BOOL _allowsAutomaticWindowTabbing;
     _releaseWhenClosed = YES;
     _viewsNeedDisplay = YES;
     _flushNeeded = YES;
+    _movable = YES;
     _resizeIncrements = NSMakeSize(1, 1);
     _contentResizeIncrements = NSMakeSize(1, 1);
 
@@ -399,11 +488,16 @@ static BOOL _allowsAutomaticWindowTabbing;
 }
 
 - (void) dealloc {
+    if (getenv("OSXIE_TRACE_WINDOW_LIFE"))
+        fprintf(stderr,
+                "[LIFE] NSWindow dealloc: self=%p platformWindow=%p\n", self,
+                _platformWindow);
     [[NSNotificationCenter defaultCenter] removeObserver: self];
     [_childWindows release];
     [_title release];
     [_miniwindowTitle release];
     [_miniwindowImage release];
+    [_representedURL release];
     [_backgroundView _setWindow: nil];
     [_backgroundView release];
     [_menu release];
@@ -413,6 +507,7 @@ static BOOL _allowsAutomaticWindowTabbing;
     [_sharedFieldEditor release];
     [_draggedTypes release];
     [_trackingAreas release];
+    [_titlebarAccessoryViewControllers release];
     [_autosaveFrameName release];
     [_platformWindow invalidate];
     [_platformWindow release];
@@ -420,6 +515,7 @@ static BOOL _allowsAutomaticWindowTabbing;
     [_threadToContext release];
     [_undoManager release];
     [_identifier release];
+    [_appearance release];
     [super dealloc];
 }
 
@@ -527,8 +623,7 @@ static BOOL _allowsAutomaticWindowTabbing;
 }
 
 - (NSURL *) representedURL {
-    NSUnimplementedMethod();
-    return nil;
+    return _representedURL;
 }
 
 - (NSWindowLevel) level {
@@ -1025,7 +1120,7 @@ static BOOL _allowsAutomaticWindowTabbing;
 }
 
 - (void) setMovable: (BOOL) movable {
-    NSUnimplementedMethod();
+    _movable = movable;
 }
 
 - (void) setBackingType: (NSBackingStoreType) value {
@@ -1193,6 +1288,113 @@ static BOOL _allowsAutomaticWindowTabbing;
     [self _toolbarSizeDidChangeFromOldHeight: oldHeight];
 }
 
+- (void) _layoutTitlebarAccessories {
+    NSView *backgroundView = [self _backgroundView];
+
+    for (NSTitlebarAccessoryViewController *controller in _titlebarAccessoryViewControllers) {
+        NSView *accessoryView = [controller view];
+
+        if (accessoryView == nil || [accessoryView superview] != nil) {
+            continue;
+        }
+
+        _NSTitlebarAccessoryContainer *container = [[_NSTitlebarAccessoryContainer alloc]
+                initWithController: controller];
+
+        [backgroundView addSubview: container];
+        [container addSubview: accessoryView];
+        [accessoryView setAutoresizingMask: NSViewWidthSizable | NSViewHeightSizable];
+        [container release];
+    }
+
+    if (backgroundView != nil) {
+        [backgroundView resizeSubviewsWithOldSize: [backgroundView bounds].size];
+        [backgroundView setNeedsDisplay: YES];
+    }
+}
+
+- (NSArray *) titlebarAccessoryViewControllers {
+    if (_titlebarAccessoryViewControllers == nil) {
+        return [NSArray array];
+    }
+
+    return [NSArray arrayWithArray: _titlebarAccessoryViewControllers];
+}
+
+- (void) setTitlebarAccessoryViewControllers: (NSArray *) controllers {
+    for (NSTitlebarAccessoryViewController *controller in
+            [NSArray arrayWithArray: _titlebarAccessoryViewControllers]) {
+        [self removeTitlebarAccessoryViewController: controller];
+    }
+
+    for (NSTitlebarAccessoryViewController *controller in controllers) {
+        [self addTitlebarAccessoryViewController: controller];
+    }
+}
+
+- (void) addTitlebarAccessoryViewController:
+        (NSTitlebarAccessoryViewController *) controller
+{
+    if (_titlebarAccessoryViewControllers == nil) {
+        _titlebarAccessoryViewControllers = [NSMutableArray new];
+    }
+
+    if ([_titlebarAccessoryViewControllers containsObject: controller]) {
+        return;
+    }
+
+    [_titlebarAccessoryViewControllers addObject: controller];
+    [controller _setWindow: self];
+    [self _layoutTitlebarAccessories];
+}
+
+- (void) removeTitlebarAccessoryViewController:
+        (NSTitlebarAccessoryViewController *) controller
+{
+    if (_titlebarAccessoryViewControllers == nil) {
+        return;
+    }
+
+    [[[controller view] superview] removeFromSuperview];
+    [controller _setWindow: nil];
+    [_titlebarAccessoryViewControllers removeObject: controller];
+    [self _layoutTitlebarAccessories];
+}
+
+- (void) removeTitlebarAccessoryViewControllerAtIndex: (NSUInteger) index {
+    if (_titlebarAccessoryViewControllers == nil ||
+            index >= [_titlebarAccessoryViewControllers count]) {
+        return;
+    }
+
+    [self removeTitlebarAccessoryViewController:
+            [_titlebarAccessoryViewControllers objectAtIndex: index]];
+}
+
+- (BOOL) titlebarAppearsTransparent {
+    return _titlebarAppearsTransparent;
+}
+
+- (void) setTitlebarAppearsTransparent: (BOOL) value {
+    _titlebarAppearsTransparent = value;
+}
+
+- (NSWindowTitlebarSeparatorStyle) titlebarSeparatorStyle {
+    return _titlebarSeparatorStyle;
+}
+
+- (void) setTitlebarSeparatorStyle: (NSWindowTitlebarSeparatorStyle) style {
+    _titlebarSeparatorStyle = style;
+}
+
+- (NSWindowToolbarStyle) toolbarStyle {
+    return _toolbarStyle;
+}
+
+- (void) setToolbarStyle: (NSWindowToolbarStyle) style {
+    _toolbarStyle = style;
+}
+
 - (void) setDefaultButtonCell: (NSButtonCell *) buttonCell {
     [_defaultButtonCell autorelease];
     _defaultButtonCell = [buttonCell retain];
@@ -1254,7 +1456,7 @@ static BOOL _allowsAutomaticWindowTabbing;
 }
 
 - (void) setCollectionBehavior: (NSWindowCollectionBehavior) behavior {
-    NSUnimplementedMethod();
+    _collectionBehavior = behavior;
 }
 
 - (void) setLevel: (NSInteger) value {
@@ -1282,7 +1484,11 @@ static BOOL _allowsAutomaticWindowTabbing;
 }
 
 - (void) setRepresentedURL: (NSURL *) newURL {
-    NSUnimplementedMethod();
+    newURL = [newURL copy];
+    [_representedURL release];
+    _representedURL = newURL;
+    [_representedFilename release];
+    _representedFilename = [[newURL path] copy];
 }
 
 - (void) setResizeIncrements: (NSSize) value {
@@ -1413,8 +1619,7 @@ static BOOL _allowsAutomaticWindowTabbing;
 }
 
 - (NSButton *) standardWindowButton: (NSWindowButton) value {
-    NSUnimplementedMethod();
-    return nil;
+    return [NSWindow standardWindowButton: value forStyleMask: _styleMask];
 }
 
 - (NSButtonCell *) defaultButtonCell {
@@ -1423,6 +1628,12 @@ static BOOL _allowsAutomaticWindowTabbing;
 
 - (NSWindow *) attachedSheet {
     return [_sheetContext sheet];
+}
+
+- (NSArray *) sheets {
+    NSWindow *sheet = [_sheetContext sheet];
+
+    return (sheet != nil) ? [NSArray arrayWithObject: sheet] : [NSArray array];
 }
 
 - (id) windowController {
@@ -1456,6 +1667,10 @@ static BOOL _allowsAutomaticWindowTabbing;
     }
 
     return mostScreen;
+}
+
+- (CGFloat) backingScaleFactor {
+    return [[self screen] backingScaleFactor];
 }
 
 - (NSScreen *) deepestScreen {
@@ -1512,8 +1727,7 @@ static BOOL _allowsAutomaticWindowTabbing;
 }
 
 - (BOOL) isMovable {
-    NSUnimplementedMethod();
-    return NO;
+    return _movable;
 }
 
 - (BOOL) inLiveResize {
@@ -1539,8 +1753,7 @@ static BOOL _allowsAutomaticWindowTabbing;
 }
 
 - (NSWindowCollectionBehavior) collectionBehavior {
-    NSUnimplementedMethod();
-    return 0;
+    return _collectionBehavior;
 }
 
 - (NSPoint) convertBaseToScreen: (NSPoint) point {
@@ -1559,6 +1772,24 @@ static BOOL _allowsAutomaticWindowTabbing;
     point.y -= frame.origin.y;
 
     return point;
+}
+
+- (NSPoint) convertPointFromScreen: (NSPoint) point {
+    return [self convertScreenToBase: point];
+}
+
+- (NSPoint) convertPointToScreen: (NSPoint) point {
+    return [self convertBaseToScreen: point];
+}
+
+- (NSRect) convertRectFromScreen: (NSRect) rect {
+    rect.origin = [self convertScreenToBase: rect.origin];
+    return rect;
+}
+
+- (NSRect) convertRectToScreen: (NSRect) rect {
+    rect.origin = [self convertBaseToScreen: rect.origin];
+    return rect;
 }
 
 - (NSRect) frameRectForContentRect: (NSRect) contentRect {
@@ -3492,6 +3723,22 @@ static BOOL _allowsAutomaticWindowTabbing;
 
 + (void) setAllowsAutomaticWindowTabbing: (BOOL) allowsAutomaticWindowTabbing {
     _allowsAutomaticWindowTabbing = allowsAutomaticWindowTabbing;
+}
+
+- (NSUInteger) occlusionState {
+    return NSWindowOcclusionStateVisible;
+}
+
+- (NSWindow *) sheetParent {
+    return nil;
+}
+
+- (BOOL) titleChangedRecently {
+    return NO;
+}
+
+- (BOOL) it_openingSheet {
+    return NO;
 }
 
 @end

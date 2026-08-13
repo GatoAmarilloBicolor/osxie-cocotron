@@ -17,14 +17,22 @@
  along with Osxie.  If not, see <http://www.gnu.org/licenses/>.
 */
 #import "CGSConnectionX11.h"
+#import "CGSWindowX11.h"
+#import "CGSSurfaceX11.h"
+#import <CoreGraphics/CGSWindow.h>
+#import <CoreGraphics/CGSScreen.h>
 #import <CoreGraphics/CGSKeyboardLayout.h>
 #include "CarbonKeys.h"
 #import "X11KeySymToUCS.h"
 #import <Foundation/NSDebug.h>
 #import <Foundation/NSString.h>
+#import <Foundation/NSMutableArray.h>
+#import <Foundation/NSDictionary.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdatomic.h>
 #import <X11/Xutil.h>
+#import <X11/Xatom.h>
 #import <X11/extensions/Xrandr.h>
 #import <X11/XKBlib.h>
 #import <X11/extensions/XKBrules.h>
@@ -37,6 +45,11 @@
 
 static int errorHandler(Display* display, XErrorEvent* errorEvent)
 {
+	// BadWindow on a window destroyed in the same race as a flush is benign
+	// (all other code paths guard the window id); silence it to avoid log noise,
+	// matching X11Display's handleError:.
+	if (errorEvent->error_code == BadWindow)
+		return 0;
 	NSLog(@"************** X11 ERROR!");
 	NSLog(@"Request code: %d:%d", errorEvent->request_code, errorEvent->minor_code);
 	NSLog(@"Error code: %d", errorEvent->error_code);
@@ -117,9 +130,20 @@ static void socketCallback(CFSocketRef s, CFSocketCallBackType type, CFDataRef a
 	if (_cfSocket != NULL)
 		CFRelease(_cfSocket);
 
+	[_screens release];
 	[_keyboardLayout release];
 
 	[super dealloc];
+}
+
+-(Display*) display
+{
+	return _display;
+}
+
+-(void*) nativeDisplay
+{
+	return _display;
 }
 
 -(CGSKeyboardLayout*) createKeyboardLayout
@@ -353,7 +377,62 @@ static void socketCallback(CFSocketRef s, CFSocketCallBackType type, CFDataRef a
 
 -(void) _doGetScreenInformation
 {
+	NSMutableArray<CGSScreen*>* screens = [NSMutableArray new];
+	XRRScreenResources* res = XRRGetScreenResourcesCurrent(_display, DefaultRootWindow(_display));
 
+	if (res)
+	{
+		for (int i = 0; i < res->ncrtc; i++)
+		{
+			XRRCrtcInfo* crtc = XRRGetCrtcInfo(_display, res, res->crtcs[i]);
+
+			if (!crtc)
+				continue;
+			if (crtc->mode == None || crtc->noutput == 0)
+			{
+				XRRFreeCrtcInfo(crtc);
+				continue;
+			}
+
+			CGSScreen* screen = [CGSScreen new];
+			NSMutableArray<NSDictionary*>* modes = [NSMutableArray new];
+			int currentIndex = -1;
+
+			for (int m = 0; m < res->nmode; m++)
+			{
+				XRRModeInfo* mode = &res->modes[m];
+
+				if (mode->hTotal == 0 || mode->vTotal == 0)
+					continue;
+
+				NSDictionary* dict = @{
+					@"Width": [NSNumber numberWithUnsignedInt: mode->width],
+					@"Height": [NSNumber numberWithUnsignedInt: mode->height],
+					@"RefreshRate": [NSNumber numberWithDouble: ((double) mode->dotClock) / ((double) mode->hTotal * mode->vTotal)],
+					@"Depth": [NSNumber numberWithInt: 32]
+				};
+
+				[modes addObject: dict];
+
+				if (mode->id == crtc->mode)
+					currentIndex = (int) [modes count] - 1;
+			}
+
+			if (currentIndex < 0)
+				currentIndex = 0;
+
+			screen.modes = modes;
+			screen.currentMode = currentIndex;
+			[modes release];
+
+			[screens addObject: screen];
+			XRRFreeCrtcInfo(crtc);
+		}
+
+		XRRFreeScreenResources(res);
+	}
+
+	_screens = screens;
 }
 
 -(NSArray<CGSScreen*>*) createScreens
@@ -368,7 +447,19 @@ static void socketCallback(CFSocketRef s, CFSocketCallBackType type, CFDataRef a
 
 -(CGSWindow*) newWindow:(CGSRegionRef)region
 {
+	CGSWindowID wid = _nextWindowId++;
+	CGSWindow* win = [[CGSWindowX11 alloc] initWithRegion: region connection: self windowID: wid];
 
+	if (!win)
+		return nil;
+
+	@synchronized (_windows)
+	{
+		[_windows setObject: win forKey: [NSNumber numberWithInt: wid]];
+	}
+
+	[win release];
+	return win;
 }
 
 +(BOOL) isAvailable

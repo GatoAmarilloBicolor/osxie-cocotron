@@ -20,9 +20,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSWindow.h>
 
 @class CGWindow;
+@class NSTitlebarAccessoryViewController;
 
 // style flag for private windows (that NSApp doesn't have to know about)
 #define NSAppKitPrivateWindow 0x8000000
+
+// A titlebar accessory strip container managed by NSWindow. The theme frame
+// tills these at the top of the window, below which menu/toolbar/content live.
+@interface _NSTitlebarAccessoryContainer : NSView {
+    NSTitlebarAccessoryViewController *_controller; // weak
+}
+
+- (instancetype) initWithController: (NSTitlebarAccessoryViewController *) controller;
+
+- (NSTitlebarAccessoryViewController *) controller;
+
+- (CGFloat) accessoryHeight;
+
+@end
 
 @interface NSWindow (NSWindow_private)
 - (CGWindow *) platformWindow;

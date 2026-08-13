@@ -40,6 +40,7 @@
 #import <X11/Xatom.h>
 #import <X11/Xutil.h>
 #import <unistd.h>
+#import <string.h>
 
 @implementation X11Window
 
@@ -162,7 +163,12 @@ static NSData *makeWindowIcon() {
 
     _frame = [self transformFrame: [delegate frame]];
     BOOL isPanel = [delegate isKindOfClass: [NSPanel class]];
-    if (isPanel && _styleMask & NSDocModalWindowMask)
+    // Doc-modals (alert sheets/dialogs) must stay WM-managed so they receive
+    // events. The borderless conversion only drops the style bits; it must
+    // NOT imply override_redirect, or KWin never manages the window and the
+    // modal run loop waits forever for a click that never arrives.
+    BOOL isDocModalPanel = isPanel && (_styleMask & NSDocModalWindowMask);
+    if (isDocModalPanel)
         _styleMask = NSBorderlessWindowMask;
     // TODO: get rid of these glX calls
     GLint att[] = {GLX_RGBA,
@@ -195,8 +201,8 @@ static NSData *makeWindowIcon() {
 
     XSetWindowAttributes xattr;
     unsigned long xattr_mask;
-    xattr.override_redirect =
-            _styleMask == NSBorderlessWindowMask ? True : False;
+    xattr.override_redirect = (_styleMask == NSBorderlessWindowMask &&
+                               !isDocModalPanel) ? True : False;
     xattr_mask = CWOverrideRedirect | CWColormap;
     xattr.colormap = cmap;
 
@@ -225,24 +231,9 @@ static NSData *makeWindowIcon() {
     // FIXME: There should be no need for this.
     _isModal |= [delegate isKindOfClass: NSClassFromString(@"NSSavePanel")];
 
-    const char *windowType;
-    BOOL isTransient = YES;
-    if (_isModal) {
-        windowType = "_NET_WM_WINDOW_TYPE_DIALOG";
-    } else if ([delegate isKindOfClass: [NSMenuWindow class]] ||
-               [delegate isKindOfClass: [NSPopUpWindow class]]) {
-        windowType = "_NET_WM_WINDOW_TYPE_MENU";
-    } else if (isPanel) {
-        windowType = "_NET_WM_WINDOW_TYPE_UTILITY";
-    } else {
-        windowType = "_NET_WM_WINDOW_TYPE_NORMAL";
-        isTransient = NO;
-    }
-    long windowTypeAtom = (long) XInternAtom(_display, windowType, False);
-    XChangeProperty(_display, _window,
-                    XInternAtom(_display, "_NET_WM_WINDOW_TYPE", False),
-                    XA_ATOM, 32, PropModeReplace,
-                    (const unsigned char *) &windowTypeAtom, 1);
+    const char *type = [self _windowTypeString];
+    BOOL isTransient = strcmp(type, "_NET_WM_WINDOW_TYPE_NORMAL") != 0;
+    [self syncWindowTypeAndState];
 
     if (isTransient && [NSApp mainWindow]) {
         X11Window *mainWindow =
@@ -268,13 +259,18 @@ static NSData *makeWindowIcon() {
 
     [self setWindowIcon];
 
+    if (getenv("OSXIE_TRACE_WINDOW_LIFE"))
+        fprintf(stderr, "[LIFE] X11Window init: self=%p xid=%lu delegate=%p\n",
+                self, (unsigned long) _window, _delegate);
+
     return self;
 }
 
 - (void) dealloc {
     if (getenv("OSXIE_TRACE_WINDOW_LIFE"))
-        fprintf(stderr, "[LIFE] X11Window dealloc: xid=%lu delegate=%p\n",
-                (unsigned long) _window, _delegate);
+        fprintf(stderr,
+                "[LIFE] X11Window dealloc: self=%p xid=%lu delegate=%p\n",
+                self, (unsigned long) _window, _delegate);
     [self invalidate];
     [_deviceDictionary release];
     [super dealloc];
@@ -289,6 +285,7 @@ static NSData *makeWindowIcon() {
         _styleMask = mask;
         return;
     }
+    _styleMask = mask;
     if (force || (mask & NSWindowStyleMaskResizable) !=
                          (_styleMask & NSWindowStyleMaskResizable)) {
         XSizeHints *sh = XAllocSizeHints();
@@ -307,20 +304,7 @@ static NSData *makeWindowIcon() {
     }
 
     if (!_mapped) {
-        long states[2];
-        int states_cnt = 0;
-        if (_isModal) {
-            states[states_cnt++] =
-                    (long) XInternAtom(_display, "_NET_WM_STATE_MODAL", False);
-        }
-        if (mask & NSWindowStyleMaskFullScreen) {
-            states[states_cnt++] = (long) XInternAtom(
-                    _display, "_NET_WM_STATE_FULLSCREEN", False);
-        }
-        XChangeProperty(_display, _window,
-                        XInternAtom(_display, "_NET_WM_STATE", False), XA_ATOM,
-                        32, PropModeReplace, (const unsigned char *) states,
-                        states_cnt);
+        [self syncWindowTypeAndState];
     } else if (force || ((mask & NSWindowStyleMaskFullScreen) !=
                          (_styleMask & NSWindowStyleMaskFullScreen))) {
         XClientMessageEvent event = {0};
@@ -340,8 +324,69 @@ static NSData *makeWindowIcon() {
 
 - (void) setStyleMask: (NSUInteger) mask {
     [self setStyleMaskInternal: mask force: NO];
+}
 
-    _styleMask = mask;
+- (const char *) _windowTypeString {
+    if (_isModal) {
+        return "_NET_WM_WINDOW_TYPE_DIALOG";
+    }
+    if ([_delegate isKindOfClass: [NSMenuWindow class]] ||
+        [_delegate isKindOfClass: [NSPopUpWindow class]]) {
+        return "_NET_WM_WINDOW_TYPE_MENU";
+    }
+    // Bars (menu bar / dock), status items and tray applets live at or above
+    // kCGMainMenuWindowLevel; advertise them as DOCK so the WM never treats
+    // them as ordinary documents (no taskbar entry, no pager, stays on top).
+    if (_level >= kCGMainMenuWindowLevel) {
+        return "_NET_WM_WINDOW_TYPE_DOCK";
+    }
+    if (_level >= kCGFloatingWindowLevel ||
+        [_delegate isKindOfClass: [NSPanel class]]) {
+        return "_NET_WM_WINDOW_TYPE_UTILITY";
+    }
+    return "_NET_WM_WINDOW_TYPE_NORMAL";
+}
+
+// Central place for the _NET_WM_WINDOW_TYPE and _NET_WM_STATE properties. The
+// window type is re-derived from _level/_styleMask every time, so calling this
+// from setLevel:/setStyleMask: keeps bars, applets and tray items classified
+// correctly even when they are re-styled after creation.
+- (void) syncWindowTypeAndState {
+    if (_window == 0) {
+        return;
+    }
+
+    long windowTypeAtom =
+            (long) XInternAtom(_display, [self _windowTypeString], False);
+    XChangeProperty(_display, _window,
+                    XInternAtom(_display, "_NET_WM_WINDOW_TYPE", False),
+                    XA_ATOM, 32, PropModeReplace,
+                    (const unsigned char *) &windowTypeAtom, 1);
+
+    long states[8];
+    int states_cnt = 0;
+    if (_isModal) {
+        states[states_cnt++] =
+                (long) XInternAtom(_display, "_NET_WM_STATE_MODAL", False);
+    }
+    if (_level >= kCGMainMenuWindowLevel) {
+        states[states_cnt++] =
+                (long) XInternAtom(_display, "_NET_WM_STATE_SKIP_TASKBAR", False);
+        states[states_cnt++] =
+                (long) XInternAtom(_display, "_NET_WM_STATE_SKIP_PAGER", False);
+        states[states_cnt++] =
+                (long) XInternAtom(_display, "_NET_WM_STATE_STICKY", False);
+        states[states_cnt++] =
+                (long) XInternAtom(_display, "_NET_WM_STATE_ABOVE", False);
+    }
+    if (_styleMask & NSWindowStyleMaskFullScreen) {
+        states[states_cnt++] = (long) XInternAtom(
+                _display, "_NET_WM_STATE_FULLSCREEN", False);
+    }
+    XChangeProperty(_display, _window,
+                    XInternAtom(_display, "_NET_WM_STATE", False), XA_ATOM,
+                    32, PropModeReplace, (const unsigned char *) states,
+                    states_cnt);
 }
 
 + (void) removeDecorationForWindow: (Window) w onDisplay: (Display *) dpy {
@@ -468,8 +513,11 @@ static NSData *makeWindowIcon() {
 
 - (void) invalidate {
     if (getenv("OSXIE_TRACE_WINDOW_LIFE")) {
-        fprintf(stderr, "[LIFE] X11Window invalidate: xid=%lu delegate=%p\n",
-                (unsigned long) _window, _delegate);
+        fprintf(stderr,
+                "[LIFE] X11Window invalidate: self=%p xid=%lu delegate=%p "
+                "context=%p caContext=%p\n",
+                self, (unsigned long) _window, _delegate, _context,
+                _caContext);
         void *bt[32];
         int n = backtrace(bt, 32);
         char **syms = backtrace_symbols(bt, n);
@@ -583,6 +631,7 @@ static NSData *makeWindowIcon() {
 
 - (void) setLevel: (int) value {
     _level = value;
+    [self syncWindowTypeAndState];
 }
 
 - (void) setOpaque: (BOOL) value {
@@ -652,6 +701,27 @@ static NSData *makeWindowIcon() {
     }
     [self ensureMapped];
     XRaiseWindow(_display, _window);
+
+    // Ask the window manager to give us keyboard focus. XRaiseWindow alone
+    // only restacks; KWin will not deliver key events unless the window is
+    // the active one (_NET_ACTIVE_WINDOW). Send the EWMH client message and
+    // fall back to XSetInputFocus for windows the WM refuses to manage
+    // (e.g. override-redirect panels).
+    XClientMessageEvent event = {0};
+    event.type = ClientMessage;
+    event.window = DefaultRootWindow(_display);
+    event.message_type = XInternAtom(_display, "_NET_ACTIVE_WINDOW", False);
+    event.format = 32;
+    event.data.l[0] = 1; // source indication: 1 = application
+    event.data.l[1] = CurrentTime;
+    event.data.l[2] = (long) _window;
+    event.data.l[3] = 0;
+    event.data.l[4] = 0;
+    XSendEvent(_display, event.window, False,
+               SubstructureRedirectMask | SubstructureNotifyMask,
+               (XEvent *) &event);
+
+    XSetInputFocus(_display, _window, RevertToParent, CurrentTime);
 }
 
 - (void) makeMain {

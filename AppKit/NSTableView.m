@@ -665,6 +665,14 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
     _allowsColumnSelection = flag;
 }
 
+- (BOOL) allowsTypeSelect {
+    return _allowsTypeSelect;
+}
+
+- (void) setAllowsTypeSelect: (BOOL) flag {
+    _allowsTypeSelect = flag;
+}
+
 - (void) setAutosaveTableColumns: (BOOL) flag {
     NSUnimplementedMethod();
 }
@@ -2088,6 +2096,40 @@ static CGFloat rowHeightAtIndex(NSTableView *self, NSInteger index) {
 
 @end
 
-@implementation NSTableView (Bindings)
+@implementation NSTableView (NSTableColumnAutoresizing)
+
+- (NSSize) intrinsicContentSize {
+    CGFloat height = 0;
+    NSTableHeaderView *header = (NSTableHeaderView *)[self headerView];
+    if (header != nil) {
+        height += [header bounds].size.height;
+    }
+    NSInteger rows = [self numberOfRows];
+    if (rows > 0) {
+        height += rows * ([self rowHeight] + [self intercellSpacing].height);
+    }
+    CGFloat width = 0;
+    for (NSTableColumn *col in [self tableColumns]) {
+        width += [col width];
+    }
+    return NSMakeSize(width, height);
+}
+
+- (NSTableViewColumnAutoresizingStyle)columnAutoresizingStyle {
+    return iOSxie_columnAutoresizingStyle;
+}
+
+- (void)setColumnAutoresizingStyle:(NSTableViewColumnAutoresizingStyle)style {
+    iOSxie_columnAutoresizingStyle = style;
+    
+    if ([self respondsToSelector:@selector(_NSTableViewColumnResizingChanged)]) {
+        [self performSelector: @selector(_NSTableViewColumnResizingChanged) 
+                 withObject: nil 
+                  forKey: @"NSTableColumnAutoresizingStyleDidChange"];
+    }
+    
+    NSLog(@"[NSTableView] Column autoresizing style set to: %lu (no-op behavior)", 
+          (unsigned long)style);
+}
 
 @end

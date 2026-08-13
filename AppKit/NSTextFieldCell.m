@@ -37,6 +37,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 @synthesize allowedInputSourceLocales = _allowedInputSourceLocales;
 
+- (NSMenu *) searchMenuTemplate {
+    return _searchMenuTemplate;
+}
+
+- (void) setSearchMenuTemplate: (NSMenu *) menu {
+    menu = [menu retain];
+    [_searchMenuTemplate release];
+    _searchMenuTemplate = menu;
+}
+
+- (BOOL) allowsDefaultTighteningForTruncation {
+    return _allowsDefaultTighteningForTruncation;
+}
+
+- (void) setAllowsDefaultTighteningForTruncation: (BOOL) flag {
+    _allowsDefaultTighteningForTruncation = flag;
+}
+
 - (void) encodeWithCoder: (NSCoder *) coder {
     [super encodeWithCoder: coder];
 
@@ -145,6 +163,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     [_textColor release];
     [_placeholder release];
     [_allowedInputSourceLocales release];
+    [_searchMenuTemplate release];
     [super dealloc];
 }
 

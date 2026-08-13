@@ -130,9 +130,13 @@ APPKIT_EXPORT const NSViewFullScreenModeOptionKey NSFullScreenModeApplicationPre
     NSShadow *_shadow;
     NSDictionary *_animations;
 
+    CGFloat _alphaValue;
+    BOOL _canDrawConcurrently;
+
     CALayerContext *_layerContext;
     id __remove;
     NSUserInterfaceItemIdentifier _identifier;
+    NSString *_accessibilityLabel;
     NSLayoutPriority _horizontalContentHuggingPriority;
     NSLayoutPriority _verticalContentHuggingPriority;
     NSLayoutPriority _horizontalContentCompressionResistancePriority;
@@ -143,6 +147,7 @@ APPKIT_EXPORT const NSViewFullScreenModeOptionKey NSFullScreenModeApplicationPre
 
 @property(class, readonly) BOOL requiresConstraintBasedLayout;
 @property BOOL translatesAutoresizingMaskIntoConstraints;
+@property(retain) NSString *accessibilityLabel;
 
 + (NSView *) focusView;
 + (NSMenu *) defaultMenu;
@@ -350,6 +355,7 @@ APPKIT_EXPORT const NSViewFullScreenModeOptionKey NSFullScreenModeApplicationPre
 - (void) setShadow: (NSShadow *) shadow;
 
 - (BOOL) needsDisplay;
+- (void) setNeedsDisplay;
 - (void) setNeedsDisplay: (BOOL) flag;
 - (void) setNeedsDisplayInRect: (NSRect) rect;
 - (void) setKeyboardFocusRingNeedsDisplayInRect: (NSRect) rect;
@@ -415,6 +421,10 @@ APPKIT_EXPORT const NSViewFullScreenModeOptionKey NSFullScreenModeApplicationPre
 - (BOOL) knowsPageRange: (NSRange *) range;
 - (NSPoint) locationOfPrintRect: (NSRect) rect;
 - (NSRect) rectForPage: (int) page;
+
+extern const CGFloat NSViewNoIntrinsicMetric;
+- (NSSize) intrinsicContentSize;
+- (void) invalidateIntrinsicContentSize;
 
 - (NSData *) dataWithEPSInsideRect: (NSRect) rect;
 - (NSData *) dataWithPDFInsideRect: (NSRect) rect;

@@ -22,8 +22,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 @class NSMenu, NSUndoManager;
 
+typedef NS_OPTIONS(NSUInteger, NSTouchTypeMask) {
+    NSTouchTypeMaskDirect = 1 << 0,
+    NSTouchTypeMaskIndirect = 1 << 1,
+};
+
 @interface NSResponder : NSObject <NSCoding> {
     id _nextResponder;
+    NSTouchTypeMask _allowedTouchTypes;
 }
 
 - (NSResponder *) nextResponder;
@@ -33,6 +39,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 - (void) setNextResponder: (NSResponder *) responder;
 - (void) setMenu: (NSMenu *) menu;
+
+- (NSTouchTypeMask) allowedTouchTypes;
+- (void) setAllowedTouchTypes: (NSTouchTypeMask) touchTypes;
 
 - validRequestorForSendType: (NSString *) sendType
                  returnType: (NSString *) returnType;
@@ -72,6 +81,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (void) rightMouseUp: (NSEvent *) event;
 - (void) rightMouseDown: (NSEvent *) event;
 - (void) rightMouseDragged: (NSEvent *) event;
+
+- (void) invalidateRestorableState;
+- (void) restoreStateWithCoder: (NSCoder *) coder;
+- (void) saveRestorableStateWithCoder: (NSCoder *) coder;
 
 @end
 

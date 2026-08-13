@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <Onyx2D/O2ColorSpace.h>
 #import <Onyx2D/O2DataProvider.h>
 #import <Onyx2D/O2Image.h>
+#import <Onyx2D/O2ImageSource.h>
 #import <Onyx2D/O2ImageSource_ICNS.h>
 
 typedef struct O2ICNSNode {
@@ -240,6 +241,7 @@ static uint32_t nextUnsigned32(O2ImageSource_ICNS *self) {
     uint32_t bitsPerPixel = 0;
     bool isMask = FALSE;
     bool maskFollows = FALSE;
+    bool isPNG = FALSE;
 
     // NSLog(@" .icns icon type=%c %c %c %c",type>>24,type>>16,type>>8,type);
 
@@ -379,16 +381,70 @@ static uint32_t nextUnsigned32(O2ImageSource_ICNS *self) {
         isMask = TRUE;
         break;
 
+    case BigEndianOSType('i', 'c', '0', '4'):
+        width = 16;
+        height = 16;
+        isPNG = TRUE;
+        break;
+
+    case BigEndianOSType('i', 'c', '0', '5'):
+        width = 32;
+        height = 32;
+        isPNG = TRUE;
+        break;
+
+    case BigEndianOSType('i', 'c', '0', '6'):
+        width = 64;
+        height = 64;
+        isPNG = TRUE;
+        break;
+
+    case BigEndianOSType('i', 'c', '0', '7'):
+        width = 128;
+        height = 128;
+        isPNG = TRUE;
+        break;
+
     case BigEndianOSType('i', 'c', '0', '8'):
         width = 256;
         height = 256;
-        bitsPerPixel = 0;
+        isPNG = TRUE;
         break;
 
     case BigEndianOSType('i', 'c', '0', '9'):
         width = 512;
         height = 512;
-        bitsPerPixel = 0;
+        isPNG = TRUE;
+        break;
+
+    case BigEndianOSType('i', 'c', '1', '0'):
+        width = 1024;
+        height = 1024;
+        isPNG = TRUE;
+        break;
+
+    case BigEndianOSType('i', 'c', '1', '1'):
+        width = 32;
+        height = 32;
+        isPNG = TRUE;
+        break;
+
+    case BigEndianOSType('i', 'c', '1', '2'):
+        width = 64;
+        height = 64;
+        isPNG = TRUE;
+        break;
+
+    case BigEndianOSType('i', 'c', '1', '3'):
+        width = 256;
+        height = 256;
+        isPNG = TRUE;
+        break;
+
+    case BigEndianOSType('i', 'c', '1', '4'):
+        width = 512;
+        height = 512;
+        isPNG = TRUE;
         break;
 
     default:
@@ -563,6 +619,31 @@ static uint32_t nextUnsigned32(O2ImageSource_ICNS *self) {
                 componentSlot++;
             }
         }
+    }
+
+    if (isPNG) {
+        // Modern ICNS files store PNG-encoded chunks (ic04..ic10, ic11..ic14,
+        // the retina variants). Decode the PNG payload directly and publish it.
+        NSData *pngData = [[NSData alloc] initWithBytes: _bytes + _position
+                                                 length: length];
+        O2DataProvider *pngProvider =
+                O2DataProviderCreateWithCFData((CFDataRef) pngData);
+        O2ImageSourceRef pngSource =
+                [O2ImageSource newImageSourceWithDataProvider: pngProvider
+                                                      options: nil];
+        if (pngSource != NULL && [(O2ImageSource *) pngSource count] > 0) {
+            O2Image *image = [(O2ImageSource *) pngSource
+                    createImageAtIndex: 0
+                               options: nil];
+            if (image != NULL) {
+                [_images addObject: image];
+                O2ImageRelease(image);
+            }
+        }
+        if (pngSource != NULL)
+            [(O2ImageSource *) pngSource release];
+        O2DataProviderRelease(pngProvider);
+        [pngData release];
     }
 
     _position += length;

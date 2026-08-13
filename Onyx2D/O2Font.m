@@ -19,6 +19,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <Onyx2D/O2Encoding.h>
 #import <Onyx2D/O2Exceptions.h>
 #import <Onyx2D/O2Font.h>
+#import <execinfo.h>
+#import <stdlib.h>
+#import <objc/runtime.h>
 
 @implementation O2Font
 static NSArray *_preferredFontNames = nil;
@@ -50,6 +53,16 @@ static NSArray *_preferredFontNames = nil;
 }
 
 - (void) dealloc {
+    if (getenv("OSXIE_TRACE_FONT")) {
+        fprintf(stderr, "[FONT] O2Font dealloc: self=%p class=%s name=%s advances=%p\n",
+                self, object_getClassName(self), [_name UTF8String], _advances);
+        void *bt[24];
+        int n = backtrace(bt, 24);
+        char **syms = backtrace_symbols(bt, n);
+        for (int i = 0; i < n && i < 12; i++)
+            fprintf(stderr, "    %s\n", syms[i]);
+        free(syms);
+    }
     [_name release];
     [_coveredCharSet release];
     if (_advances != NULL)

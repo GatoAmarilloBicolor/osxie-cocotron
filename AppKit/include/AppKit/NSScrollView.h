@@ -25,6 +25,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 @class NSClipView, NSScroller, NSColor, NSRulerView;
 
+typedef NS_ENUM(NSInteger, NSScrollViewElasticity) {
+    NSScrollElasticityAutomatic = 0,
+    NSScrollElasticityNone = 1,
+    NSScrollElasticityAllowed = 2,
+};
+
 APPKIT_EXPORT NSString *const NSScrollViewDidEndLiveScrollNotification;
 APPKIT_EXPORT NSString *const NSScrollViewWillStartLiveScrollNotification;
 APPKIT_EXPORT NSString *const NSScrollViewDidLiveScrollNotification;
@@ -56,6 +62,9 @@ APPKIT_EXPORT NSString *const NSScrollViewDidLiveScrollNotification;
     CGFloat _magnification;
     CGFloat _minMagnification;
     CGFloat _maxMagnification;
+    NSScrollerStyle _scrollerStyle;
+    NSScrollViewElasticity _verticalScrollElasticity;
+    NSScrollViewElasticity _horizontalScrollElasticity;
 }
 
 + (NSSize) frameSizeForContentSize: (NSSize) contentSize
@@ -116,6 +125,14 @@ APPKIT_EXPORT NSString *const NSScrollViewDidLiveScrollNotification;
 - (CGFloat) minMagnification;
 - (CGFloat) maxMagnification;
 - (BOOL) allowsMagnification;
+
+- (NSScrollerStyle) scrollerStyle;
+- (void) setScrollerStyle: (NSScrollerStyle) style;
+
+- (NSScrollViewElasticity) verticalScrollElasticity;
+- (NSScrollViewElasticity) horizontalScrollElasticity;
+- (void) setVerticalScrollElasticity: (NSScrollViewElasticity) elasticity;
+- (void) setHorizontalScrollElasticity: (NSScrollViewElasticity) elasticity;
 
 - (void) setDocumentView: (NSView *) view;
 - (void) setContentView: (NSClipView *) clipView;

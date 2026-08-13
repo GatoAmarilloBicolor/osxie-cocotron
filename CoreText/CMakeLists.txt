@@ -59,3 +59,18 @@ add_framework(CoreText
 		# native
 		FreeType
 )
+
+include(osxie_exe)
+
+add_osxie_executable(ct_smoke
+	ct_smoke.m
+)
+
+target_link_libraries(ct_smoke
+	CoreText
+	CoreGraphics
+	CoreFoundation
+	Foundation
+)
+
+set_source_files_properties(ct_smoke.m PROPERTIES LANGUAGE C)

@@ -18,6 +18,89 @@
 */
 
 #import <AppKit/NSAppearance.h>
+#import <Foundation/NSString.h>
+#import <stdlib.h>
+#import <unistd.h>
+#import <pwd.h>
+
+static BOOL _systemPrefersDark() {
+    static int cached = -1;
+    if (cached != -1)
+        return cached;
+
+    // Honor an explicit override set by the launcher.
+    const char *override = getenv("OSXIE_APPEARANCE");
+    if (override != NULL && strcmp(override, "DarkAqua") == 0) {
+        cached = 1;
+        return cached;
+    }
+    if (override != NULL && strcmp(override, "Aqua") == 0) {
+        cached = 0;
+        return cached;
+    }
+
+    // Fall back to the DE's global configuration. The guest container can
+    // reach the host's KDE settings through /Volumes/SystemRoot (host root).
+    // The XDG portal derives org.freedesktop.appearance color-scheme from the
+    // [Colors:View] background luminance, so parse it the same way.
+    const char *home = getenv("HOME");
+    struct passwd *pw = getpwuid(getuid());
+    const char *pwDir = (pw != NULL) ? pw->pw_dir : NULL;
+
+    const char *candidates[4] = {0};
+    int n = 0;
+    if (home != NULL) {
+        char *p = malloc(strlen(home) + 32);
+        sprintf(p, "%s/.config/kdeglobals", home);
+        candidates[n++] = p;
+        char *q = malloc(strlen(home) + 64);
+        sprintf(q, "/Volumes/SystemRoot%s/.config/kdeglobals", home);
+        candidates[n++] = q;
+    }
+    if (pwDir != NULL && (home == NULL || strcmp(pwDir, home) != 0)) {
+        char *p = malloc(strlen(pwDir) + 64);
+        sprintf(p, "/Volumes/SystemRoot%s/.config/kdeglobals", pwDir);
+        candidates[n++] = p;
+    }
+
+    for (int i = 0; i < n; i++) {
+        const char *path = candidates[i];
+        FILE *f = fopen(path, "r");
+        if (f == NULL)
+            continue;
+
+        // Look for the first "BackgroundNormal=r,g,b" under [Colors:View].
+        BOOL inColorsView = NO;
+        char line[512];
+        int r = 0, g = 0, b = 0;
+        BOOL found = NO;
+        while (fgets(line, sizeof(line), f) != NULL) {
+            if (line[0] == '[') {
+                inColorsView = (strncmp(line, "[Colors:View]", 14) == 0);
+                continue;
+            }
+            if (!inColorsView)
+                continue;
+            if (strncmp(line, "BackgroundNormal=", 17) == 0) {
+                if (sscanf(line + 17, "%d,%d,%d", &r, &g, &b) == 3)
+                    found = YES;
+                break;
+            }
+        }
+        fclose(f);
+        if (found) {
+            cached = ((r + g + b) / 3 < 128) ? 1 : 0;
+            break;
+        }
+    }
+    free((void *) candidates[0]);
+    free((void *) candidates[1]);
+    free((void *) candidates[2]);
+
+    if (cached == -1)
+        cached = 0;
+    return cached;
+}
 
 NSString *const NSAppearanceNameAqua = @"NSAppearanceNameAqua";
 NSString *const NSAppearanceNameDarkAqua = @"NSAppearanceNameDarkAqua";
@@ -55,7 +138,9 @@ static NSAppearance *_currentAppearance = nil;
     return appearance;
 }
 + (NSAppearance *) currentAppearance {
-    return [self appearanceNamed: NSAppearanceNameAqua];
+    NSAppearanceName name = _systemPrefersDark() ? NSAppearanceNameDarkAqua
+                                                  : NSAppearanceNameAqua;
+    return [self appearanceNamed: name];
 }
 
 + (NSAppearance *) currentDrawingAppearance {

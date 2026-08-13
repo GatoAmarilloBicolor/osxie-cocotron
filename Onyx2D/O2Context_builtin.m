@@ -34,6 +34,8 @@
 #import <Onyx2D/O2Paint_pattern.h>
 #import <Onyx2D/O2Paint_radialGradient.h>
 #import <Onyx2D/O2Shading.h>
+#import <stdio.h>
+#import <stdlib.h>
 #import <Onyx2D/O2Surface.h>
 #import <Onyx2D/VGPath.h>
 
@@ -64,6 +66,12 @@ void O2DContextClipAndFillEdges(O2Context_builtin *self, int fillRuleMask);
 
 - initWithSurface: (O2Surface *) surface flipped: (BOOL) flipped {
     [super initWithSurface: surface flipped: flipped];
+
+    if (getenv("OSXIE_TRACE_WINDOW_LIFE"))
+        fprintf(stderr,
+                "[LIFE] O2Context_builtin init: self=%p surface=%p w=%zu h=%zu\n",
+                self, _surface, O2ImageGetWidth(_surface),
+                O2ImageGetHeight(_surface));
 
     _clipContext = nil;
 
@@ -96,6 +104,10 @@ void O2DContextClipAndFillEdges(O2Context_builtin *self, int fillRuleMask);
 }
 
 - (void) dealloc {
+    if (getenv("OSXIE_TRACE_WINDOW_LIFE"))
+        fprintf(stderr,
+                "[LIFE] O2Context_builtin dealloc: self=%p surface=%p\n", self,
+                _surface);
     [_clipContext release];
     [_paint release];
 

@@ -19,6 +19,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <AppKit/NSBezierPath.h>
 #import <AppKit/NSColor.h>
+#import <AppKit/NSColorSpace.h>
 #import <AppKit/NSColor_CGColor.h>
 #import <AppKit/NSColor_catalog.h>
 #import <AppKit/NSImage.h>
@@ -319,6 +320,11 @@ NSNotificationName const NSSystemColorsDidChangeNotification = @"NSSystemColorsD
     return [NSColor colorWithCatalogName: @"System" colorName: @"controlColor"];
 }
 
++ (NSColor *) controlAccentColor {
+    return [NSColor colorWithCatalogName: @"System"
+                               colorName: @"controlAccentColor"];
+}
+
 + (NSColor *) selectedControlColor {
     return [NSColor colorWithCatalogName: @"System"
                                colorName: @"selectedControlColor"];
@@ -429,6 +435,11 @@ NSNotificationName const NSSystemColorsDidChangeNotification = @"NSSystemColorsD
 + (NSColor *) windowFrameColor {
     return [NSColor colorWithCatalogName: @"System"
                                colorName: @"windowFrameColor"];
+}
+
++ (NSColor *) windowFrameTextColor {
+    return [NSColor colorWithCatalogName: @"System"
+                               colorName: @"windowFrameTextColor"];
 }
 
 + (NSColor *) selectedMenuItemColor {
@@ -604,6 +615,37 @@ NSNotificationName const NSSystemColorsDidChangeNotification = @"NSSystemColorsD
                                spaceName: NSDeviceRGBColorSpace];
 }
 
++ (NSColor *) colorWithColorSpace: (NSColorSpace *) colorSpace
+                       components: (const CGFloat *) components
+                            count: (NSInteger) count
+{
+    CGColorSpaceRef cgColorSpace = [colorSpace CGColorSpace];
+    if (cgColorSpace == NULL)
+        return nil;
+
+    CGColorRef cgColor = CGColorCreate(cgColorSpace, components);
+    if (cgColor == NULL)
+        return nil;
+
+    NSColorSpaceName spaceName;
+    switch (CGColorSpaceGetModel(cgColorSpace)) {
+        case kCGColorSpaceModelMonochrome:
+            spaceName = NSCalibratedWhiteColorSpace;
+            break;
+        case kCGColorSpaceModelCMYK:
+            spaceName = NSDeviceCMYKColorSpace;
+            break;
+        default:
+            spaceName = NSCalibratedRGBColorSpace;
+            break;
+    }
+
+    NSColor *result = [NSColor_CGColor colorWithColorRef: cgColor
+                                              spaceName: spaceName];
+    CGColorRelease(cgColor);
+    return result;
+}
+
 + (NSColor *) colorWithRed: (CGFloat) red
                      green: (CGFloat) green
                       blue: (CGFloat) blue
@@ -681,6 +723,17 @@ NSNotificationName const NSSystemColorsDidChangeNotification = @"NSSystemColorsD
                               brightness: brightness
                                    alpha: alpha
                                spaceName: NSCalibratedRGBColorSpace];
+}
+
++ (NSColor *) colorWithHue: (CGFloat) hue
+                saturation: (CGFloat) saturation
+                brightness: (CGFloat) brightness
+                     alpha: (CGFloat) alpha
+{
+    return [NSColor colorWithCalibratedHue: hue
+                                saturation: saturation
+                                brightness: brightness
+                                     alpha: alpha];
 }
 
 + (NSColor *) colorWithCatalogName: (NSColorListName) catalogName
@@ -902,6 +955,30 @@ static void releasePatternInfo(void *info) {
     if (alpha >= 1.0)
         return self;
     return nil;
+}
+
+- (NSColor *) colorUsingColorSpace: (NSColorSpace *) colorSpace {
+    if (colorSpace == nil)
+        return self;
+
+    CGColorSpaceRef cgColorSpace = [colorSpace CGColorSpace];
+    if (cgColorSpace == NULL)
+        return self;
+
+    NSColorSpaceName spaceName;
+    switch (CGColorSpaceGetModel(cgColorSpace)) {
+        case kCGColorSpaceModelMonochrome:
+            spaceName = NSCalibratedWhiteColorSpace;
+            break;
+        case kCGColorSpaceModelCMYK:
+            spaceName = NSDeviceCMYKColorSpace;
+            break;
+        default:
+            spaceName = NSCalibratedRGBColorSpace;
+            break;
+    }
+
+    return [self colorUsingColorSpaceName: spaceName device: nil];
 }
 
 - (NSColor *) colorUsingColorSpaceName: (NSColorSpaceName) colorSpace {

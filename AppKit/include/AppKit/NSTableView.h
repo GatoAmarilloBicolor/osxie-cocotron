@@ -75,6 +75,15 @@ typedef enum {
     NSTableViewDropAbove
 } NSTableViewDropOperation;
 
+typedef NS_ENUM(NSUInteger, NSTableViewColumnAutoresizingStyle) {
+    NSTableViewNoColumnAutoresizing = 0,
+    NSTableViewUniformColumnAutoresizingStyle,
+    NSTableViewSequentialColumnAutoresizingStyle,
+    NSTableViewReverseSequentialColumnAutoresizingStyle,
+    NSTableViewLastColumnOnlyAutoresizingStyle,
+    NSTableViewFirstColumnOnlyAutoresizingStyle
+};
+
 @interface NSTableView : NSControl {
     id _target;
     SEL _action;
@@ -98,6 +107,7 @@ typedef enum {
     BOOL _allowsMultipleSelection;
     BOOL _allowsEmptySelection;
     BOOL _allowsColumnSelection;
+    BOOL _allowsTypeSelect;
     NSSize _intercellSpacing;
 
     BOOL _alternatingRowBackground;
@@ -115,6 +125,8 @@ typedef enum {
     NSArray *_sortDescriptors;
 
     NSInteger _draggingRow;
+
+    NSTableViewColumnAutoresizingStyle iOSxie_columnAutoresizingStyle;
 }
 
 - (SEL) doubleAction;
@@ -138,11 +150,14 @@ typedef enum {
 - (BOOL) allowsMultipleSelection;
 - (BOOL) allowsEmptySelection;
 - (BOOL) allowsColumnSelection;
+- (BOOL) allowsTypeSelect;
 - (BOOL) autosaveTableColumns;
 
 - (BOOL) usesAlternatingRowBackgroundColors;
 - (unsigned int) gridStyleMask;
 - (NSTableViewSelectionHighlightStyle) selectionHighlightStyle;
+- (void) setColumnAutoresizingStyle: (NSTableViewColumnAutoresizingStyle) style;
+- (NSTableViewColumnAutoresizingStyle) columnAutoresizingStyle;
 
 - (NSInteger) numberOfRows;
 - (NSUInteger) numberOfColumns;

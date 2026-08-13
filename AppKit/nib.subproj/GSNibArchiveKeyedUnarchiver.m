@@ -690,21 +690,26 @@ GSReadVarInt(const uint8_t *bytes, NSUInteger length, NSUInteger *offset,
     [_cursorStack removeLastObject];
     [_objectStack removeLastObject];
 
+    // The codebase convention (see NSKeyedUnarchiver, NSClassSwapper,
+    // NSPlaceholderNumber) is that initWithCoder:/awakeAfterUsingCoder:
+    // implementations that return a different object release self.  The
+    // original object is therefore already released here; only the
+    // dictionary's retain is balanced by _replaceObjectAtIndex:.  Releasing
+    // it again would double-free it (NULL isa on the next objc_release).
     if (result != object) {
         [self _replaceObjectAtIndex: index withObject: result];
-        if (!sharedPlaceholder) {
-            [object release];
-        }
         object = [result retain];
     }
 
     if ([object respondsToSelector: @selector(awakeAfterUsingCoder:)]) {
         result = [object awakeAfterUsingCoder: self];
         if (result != object) {
+            // awakeAfterUsingCoder: implementations (NSWindowTemplate,
+            // NSCustomResource) release self and return the replacement,
+            // which is already retained.  Do not release the original here
+            // (see the initWithCoder: comment above) - the dictionary's
+            // retain is the only one left, balanced by _replaceObjectAtIndex:.
             [self _replaceObjectAtIndex: index withObject: result];
-            if (!sharedPlaceholder) {
-                [object release];
-            }
             object = [result retain];
         }
     }

@@ -20,9 +20,12 @@
 #define CGSSURFACEX11_H
 
 #import <CoreGraphics/CGSSurface.h>
+#import <X11/Xlib.h>
 
-@interface CGSSurfaceX11 : CGSSurface
+@interface CGSSurfaceX11 : CGSSurface {
+	Window _x11Window;
+}
+
 @end
 
 #endif
-

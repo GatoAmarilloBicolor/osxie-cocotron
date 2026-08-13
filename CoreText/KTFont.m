@@ -19,6 +19,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <CoreText/KTFont.h>
 #import <Foundation/NSArray.h>
 #import <Onyx2D/O2Exceptions.h>
+#import <execinfo.h>
+#import <stdlib.h>
+#import <objc/runtime.h>
 
 @implementation KTFont
 
@@ -38,12 +41,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (void) dealloc {
+    if (getenv("OSXIE_TRACE_FONT")) {
+        fprintf(stderr, "[FONT] KTFont dealloc: self=%p class=%s cgfont=%p size=%g\n",
+                self, object_getClassName(self), _font, _size);
+        void *bt[24];
+        int n = backtrace(bt, 24);
+        char **syms = backtrace_symbols(bt, n);
+        for (int i = 0; i < n && i < 12; i++)
+            fprintf(stderr, "    %s\n", syms[i]);
+        free(syms);
+    }
     CGFontRelease(_font);
     [super dealloc];
 }
 
 - (CFStringRef) copyName {
     return CGFontCopyFullName(_font);
+}
+
+- (CGFontRef) cgFont {
+    return _font;
 }
 
 - (CGFloat) pointSize {
@@ -159,6 +176,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 {
     O2InvalidAbstractInvocation();
     return nil;
+}
+
+- (CFTypeID) _cfTypeID
+{
+    return CTFontGetTypeID();
 }
 
 @end

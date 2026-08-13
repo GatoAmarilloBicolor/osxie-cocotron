@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSPasteboard.h>
 #import <AppKit/NSRaise.h>
 #import <Foundation/NSKeyedArchiver.h>
+#import <stdlib.h>
 
 NSImageName const NSImageNameActionTemplate = @"NSActionTemplate";
 NSImageName const NSImageNameAddTemplate = @"NSAddTemplate";
@@ -728,6 +729,10 @@ NSImageName const NSImageNameTouchBarVolumeUpTemplate =
 - (NSCachedImageRep *) _cachedImageRepCreateIfNeeded {
     int count = [_representations count];
 
+    if (getenv("OSXIE_TRACE_WINDOW_LIFE"))
+        fprintf(stderr, "[LIFE] _cachedImageRepCreateIfNeeded: self=%p count=%d cacheValid=%d\n",
+                self, count, _cacheIsValid);
+
     while (--count >= 0) {
         NSCachedImageRep *check = [_representations objectAtIndex: count];
 
@@ -745,6 +750,10 @@ NSImageName const NSImageNameTouchBarVolumeUpTemplate =
                                              depth: 0
                                           separate: _isCachedSeparately
                                              alpha: YES];
+    if (getenv("OSXIE_TRACE_WINDOW_LIFE"))
+        fprintf(stderr,
+                "[LIFE] _cachedImageRepCreateIfNeeded: created cached=%p size=%gx%g\n",
+                cached, [self size].width, [self size].height);
     [self addRepresentation: cached];
     [cached release];
     return cached;

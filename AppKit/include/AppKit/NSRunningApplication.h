@@ -18,6 +18,7 @@
 */
 
 #import <Foundation/NSObject.h>
+#include <sys/types.h>
 
 typedef enum {
     NSApplicationActivationPolicyRegular,
@@ -25,8 +26,32 @@ typedef enum {
     NSApplicationActivationPolicyProhibited
 } NSApplicationActivationPolicy;
 
+typedef NS_OPTIONS(NSUInteger, NSApplicationActivationOptions) {
+    NSApplicationActivateAllWindows = 1 << 0,
+    NSApplicationActivateIgnoringOtherApps = 1 << 1
+};
+
 @interface NSRunningApplication : NSObject
 
++ (NSRunningApplication *) currentApplication;
 + (NSArray<NSRunningApplication *> *) runningApplicationsWithBundleIdentifier: (NSString *) bundleIdentifier;
+
+@property (readonly) pid_t processIdentifier;
+@property (readonly, copy) NSString * bundleIdentifier;
+@property (readonly, copy) NSString * localizedName;
+@property (readonly, copy) NSURL * bundleURL;
+@property (readonly, copy) NSURL * executableURL;
+@property (readonly) BOOL isActive;
+@property (readonly) BOOL isHidden;
+@property (readonly) BOOL isTerminated;
+@property (readonly) BOOL isFinishedLaunching;
+@property (readonly) NSApplicationActivationPolicy activationPolicy;
+
+- (BOOL) activateWithOptions: (NSApplicationActivationOptions) options;
+- (BOOL) hide;
+- (BOOL) unhide;
+- (BOOL) terminate;
+- (BOOL) forceTerminate;
+- (BOOL) hideOtherApplications;
 
 @end

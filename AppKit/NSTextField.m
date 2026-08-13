@@ -157,6 +157,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return [_cell backgroundColor];
 }
 
+- (BOOL) allowsDefaultTighteningForTruncation {
+    return [_cell allowsDefaultTighteningForTruncation];
+}
+
+- (void) setAllowsDefaultTighteningForTruncation: (BOOL) flag {
+    [_cell setAllowsDefaultTighteningForTruncation: flag];
+}
+
 - (NSColor *) textColor {
     return [_cell textColor];
 }

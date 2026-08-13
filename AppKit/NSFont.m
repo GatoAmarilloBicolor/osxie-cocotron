@@ -573,6 +573,10 @@ static NSLock *_cacheLock = nil;
     return _name;
 }
 
+- (CGFontRef) cgFont {
+    return _cgFont;
+}
+
 - (const CGFloat *) matrix {
     return _matrix;
 }

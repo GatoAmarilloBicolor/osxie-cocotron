@@ -50,6 +50,9 @@ enum {
 - (id) dataCell;
 - (NSString *) headerToolTip;
 
+- (NSString *) title;
+- (void) setTitle: (NSString *) title;
+
 - (CGFloat) width;
 - (CGFloat) minWidth;
 - (CGFloat) maxWidth;

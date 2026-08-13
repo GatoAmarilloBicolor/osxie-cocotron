@@ -50,6 +50,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return self;
 }
 
+- initWithAttributedString: (NSAttributedString *) string {
+    [super initWithString: @""];
+    _string = [NSMutableString new];
+    _rangeToAttributes = NSCreateRangeToCopiedObjectEntries(0);
+    replaceCharactersInRangeWithAttributedString(self, NSMakeRange(0, 0), string);
+    return self;
+}
+
 - init {
     return [self initWithString: @""];
 }

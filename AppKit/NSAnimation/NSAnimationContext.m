@@ -35,16 +35,29 @@
 }
 
 + (NSAnimationContext *) currentContext {
-    NSUnimplementedMethod();
-    return nil;
+    static NSAnimationContext *context = nil;
+
+    if (context == nil)
+        context = [NSAnimationContext new];
+
+    return context;
 }
 
 - (void) setDuration: (NSTimeInterval) duration {
-    NSUnimplementedMethod();
+    _duration = duration;
 }
 - (NSTimeInterval) duration {
-    NSUnimplementedMethod();
-    return 0;
+    return _duration;
+}
+
+- (id) timingFunction {
+    return _timingFunction;
+}
+
+- (void) setTimingFunction: (id) function {
+    function = [function retain];
+    [_timingFunction release];
+    _timingFunction = function;
 }
 
 @end

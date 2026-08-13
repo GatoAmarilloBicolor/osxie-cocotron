@@ -100,6 +100,7 @@ typedef enum {
 
 - (CGFloat) pointSize;
 - (NSString *) fontName;
+- (CGFontRef) cgFont;
 - (const CGFloat *) matrix;
 - (NSAffineTransform *) textTransform;
 - (NSFontRenderingMode) renderingMode;

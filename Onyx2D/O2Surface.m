@@ -29,6 +29,8 @@
 #import <Onyx2D/O2ColorSpace.h>
 #import <Onyx2D/O2DataProvider.h>
 #import <Onyx2D/O2Surface.h>
+#import <stdio.h>
+#import <stdlib.h>
 
 @implementation O2Surface
 
@@ -589,6 +591,10 @@ static BOOL initFunctionsForParameters(O2Surface *self, size_t bitsPerComponent,
 }
 
 - (void) dealloc {
+    if (getenv("OSXIE_TRACE_WINDOW_LIFE"))
+        fprintf(stderr,
+                "[LIFE] O2Surface dealloc: self=%p bytes=%p w=%zu h=%zu\n",
+                self, _pixelBytes, _width, _height);
     _pixelBytes =
             NULL; // if we own it, it's in the provider, if not, no release
     pthread_mutex_destroy(&_lock);

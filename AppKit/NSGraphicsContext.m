@@ -23,6 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSWindow-Private.h>
 #import <ApplicationServices/ApplicationServices.h>
 #import <QuartzCore/CIContext.h>
+#import <stdlib.h>
+#import <execinfo.h>
 
 @class NSColor;
 
@@ -45,6 +47,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 - initWithWindow: (NSWindow *) window {
     _graphicsPort = CGContextRetain([window cgContext]);
+    if (getenv("OSXIE_TRACE_WINDOW_LIFE")) {
+        fprintf(stderr,
+                "[LIFE] NSGraphicsContext init: self=%p port=%p window=%p\n",
+                self, _graphicsPort, window);
+        void *bt[24];
+        int n = backtrace(bt, 24);
+        char **syms = backtrace_symbols(bt, n);
+        for (int i = 1; i < n && i < 12; i++)
+            fprintf(stderr, "    %s\n", syms[i]);
+        free(syms);
+    }
     _focusStack = [NSMutableArray new];
     _isDrawingToScreen = YES;
     _isFlipped = NO;
@@ -97,6 +110,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (void) dealloc {
+    if (getenv("OSXIE_TRACE_WINDOW_LIFE"))
+        fprintf(stderr,
+                "[LIFE] NSGraphicsContext dealloc: self=%p port=%p\n", self,
+                _graphicsPort);
     if (_graphicsPort != NULL)
         CGContextRelease(_graphicsPort);
     [_ciContext release];
@@ -204,6 +221,10 @@ NSMutableArray *NSCurrentFocusStack() {
 }
 
 - (CGContextRef) graphicsPort {
+    return _graphicsPort;
+}
+
+- (CGContextRef) CGContext {
     return _graphicsPort;
 }
 

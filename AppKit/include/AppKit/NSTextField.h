@@ -27,12 +27,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 @property CGFloat preferredMaxLayoutWidth;
 
++ (NSTextField *) labelWithString: (NSString *) string;
++ (NSTextField *) wrappingLabelWithString: (NSString *) string;
++ (NSTextField *) textFieldWithString: (NSString *) string;
+
 - delegate;
 - (void) setDelegate: delegate;
 
 - (NSColor *) backgroundColor;
 - (NSColor *) textColor;
 - (BOOL) drawsBackground;
+
+- (BOOL) allowsDefaultTighteningForTruncation;
+- (void) setAllowsDefaultTighteningForTruncation: (BOOL) flag;
 
 - (void) setBackgroundColor: (NSColor *) color;
 - (void) setTextColor: (NSColor *) color;

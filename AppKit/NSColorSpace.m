@@ -35,6 +35,10 @@ NSString *const _NSColorCoreUICatalogNamePrefix =
     return colorSpace;
 }
 
++ (NSColorSpace *) genericRGBColorSpace {
+    return [self sRGBColorSpace];
+}
+
 + (NSColorSpace *) deviceRGBColorSpace {
     CGColorSpaceRef device = CGColorSpaceCreateDeviceRGB();
     NSColorSpace *result =

@@ -68,6 +68,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     _nextResponder = responder;
 }
 
+- (NSTouchTypeMask) allowedTouchTypes {
+    return _allowedTouchTypes;
+}
+
+- (void) setAllowedTouchTypes: (NSTouchTypeMask) touchTypes {
+    _allowedTouchTypes = touchTypes;
+}
+
 - (void) setMenu: (NSMenu *) menu {
     NSInvalidAbstractInvocation();
 }
@@ -299,6 +307,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (void) noop: sender {
+}
+
+- (void) invalidateRestorableState {
+}
+
+- (void) restoreStateWithCoder: (NSCoder *) coder {
+}
+
+- (void) saveRestorableStateWithCoder: (NSCoder *) coder {
+}
+
+- (void) scrollToEndOfDocument: (id) sender {
+}
+
+- (void) scrollToBeginningOfDocument: (id) sender {
 }
 
 @end

@@ -34,8 +34,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return [[NSDisplay currentDisplay] scrollerWidth];
 }
 
++ (CGFloat) scrollerWidthForControlSize: (NSControlSize) controlSize
+                          scrollerStyle: (NSScrollerStyle) scrollerStyle {
+    if (scrollerStyle == NSScrollerStyleOverlay)
+        return 8.0;
+
+    switch (controlSize) {
+    case NSMiniControlSize:
+        return 12.0;
+    case NSSmallControlSize:
+        return 15.0;
+    default:
+        return 15.0;
+    }
+}
+
 + (NSScrollerStyle) preferredScrollerStyle {
-    NSUnimplementedMethod();
+    return NSScrollerStyleLegacy;
 }
 /* OS X has a global default "AppleScrollBarVariant" with the values: Single,
  DoubleMin, DoubleMax, and DoubleBoth This controls the default position of the
@@ -195,6 +210,14 @@ static NSAppleScrollBarVariant appleScrollBarVariant(NSScroller *self) {
 
 - (void) setScrollerStyle: (NSScrollerStyle) style {
     _scrollerStyle = style;
+}
+
+- (NSScrollerKnobStyle) knobStyle {
+    return _knobStyle;
+}
+
+- (void) setKnobStyle: (NSScrollerKnobStyle) style {
+    _knobStyle = style;
 }
 
 - (NSRect) frameOfDecrementPage {

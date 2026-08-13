@@ -24,6 +24,7 @@
 #import <CoreGraphics/CGSWindow.h>
 #import <CoreGraphics/CGSSurface.h>
 #include <pthread.h>
+#include <unistd.h>
 
 static NSMutableDictionary<NSNumber*, CGSConnection*>* g_connections = nil;
 static Boolean g_denyConnections = FALSE;
@@ -84,7 +85,46 @@ static void _CGSLoadBackend(void)
 	NSBundle* cgBundle = [NSBundle bundleForClass: [CGSConnection class]];
 	NSMutableArray<NSBundle*>* backends = [NSMutableArray new];
 
-	for (NSString *path in [cgBundle pathsForResourcesOfType: @"backend" inDirectory: @"Backends"])
+	NSArray<NSString*>* paths = [cgBundle pathsForResourcesOfType: @"backend" inDirectory: @"Backends"];
+
+	// Fallback: the framework-root Backends/Resources/Backends dirs are symlinks
+	// that may not resolve in the container. If the standard lookup finds nothing,
+	// scan the versioned Resources dirs directly (Versions/*/Resources/Backends).
+	if (paths.count == 0)
+	{
+		NSFileManager* fm = [NSFileManager defaultManager];
+		NSString* bundlePath = [cgBundle bundlePath];
+		NSMutableArray<NSString*>* dirs = [NSMutableArray new];
+		[dirs addObject: [bundlePath stringByAppendingPathComponent: @"Resources/Backends"]];
+		[dirs addObject: [bundlePath stringByAppendingPathComponent: @"Backends"]];
+
+		NSString* versionsDir = [bundlePath stringByAppendingPathComponent: @"Versions"];
+		[dirs addObject: [versionsDir stringByAppendingPathComponent: @"Current/Resources/Backends"]];
+		for (NSString* v in [fm contentsOfDirectoryAtPath: versionsDir error: nil])
+		{
+			if ([v hasPrefix: @"."] || [v isEqualToString: @"Current"])
+				continue;
+			[dirs addObject: [versionsDir stringByAppendingPathComponent:
+				[v stringByAppendingPathComponent: @"Resources/Backends"]]];
+		}
+
+		NSMutableArray<NSString*>* found = [NSMutableArray new];
+		for (NSString* dir in dirs)
+		{
+			for (NSString* entry in [fm contentsOfDirectoryAtPath: dir error: nil])
+			{
+				if ([entry hasSuffix: @".backend"])
+				{
+					NSString* full = [dir stringByAppendingPathComponent: entry];
+					if (![found containsObject: full])
+						[found addObject: full];
+				}
+			}
+		}
+		paths = found;
+	}
+
+	for (NSString *path in paths)
 	{
 		NSBundle* backendBundle = [NSBundle bundleWithPath: path];
 		if ([backendBundle load])
@@ -184,6 +224,42 @@ CGError CGSReleaseConnection(CGSConnectionID connId)
 CGSConnectionID _CGSDefaultConnection(void)
 {
 	return CGSMainConnectionID();
+}
+
+CGSConnectionID CGSDefaultConnectionForThread(void)
+{
+	// Osxie has no per-thread window server connections; the single default
+	// connection is shared by all threads.
+	return _CGSDefaultConnection();
+}
+
+CFDictionaryRef CGSessionCopyCurrentDictionary(void)
+{
+	uid_t uid = getuid();
+	NSString *userName = NSUserName();
+	CFStringRef name = userName ? (CFStringRef)[userName copy] : CFSTR("user");
+	CFNumberRef uidNum = CFNumberCreate(NULL, kCFNumberIntType, &uid);
+	int consoleSet = 1;
+	CFNumberRef consoleSetNum = CFNumberCreate(NULL, kCFNumberIntType, &consoleSet);
+
+	CFStringRef keys[] = {
+		CFSTR("kCGSSessionOnConsoleKey"),
+		CFSTR("kCGSSessionUserNameKey"),
+		CFSTR("kCGSSessionUserIDKey"),
+		CFSTR("kCGSSessionConsoleSetKey"),
+	};
+	CFTypeRef values[] = {
+		kCFBooleanTrue,
+		name,
+		uidNum,
+		consoleSetNum,
+	};
+	CFDictionaryRef dict = CFDictionaryCreate(NULL, (const void **) keys, values, 4,
+		&kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+	CFRelease(name);
+	CFRelease(uidNum);
+	CFRelease(consoleSetNum);
+	return dict;
 }
 
 CGSConnectionID CGSMainConnectionID(void)

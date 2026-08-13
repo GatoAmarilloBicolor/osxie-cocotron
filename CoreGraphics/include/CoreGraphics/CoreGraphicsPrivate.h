@@ -43,6 +43,8 @@ extern CGError CGSNewConnection(_Nullable CGSDictionaryObj attribs, CGSConnectio
 extern CGError CGSReleaseConnection(CGSConnectionID connId);
 extern CGSConnectionID _CGSDefaultConnection(void);
 extern CGSConnectionID CGSMainConnectionID(void);
+extern CGSConnectionID CGSDefaultConnectionForThread(void);
+extern CFDictionaryRef CGSessionCopyCurrentDictionary(void);
 extern CGError CGSSetDenyWindowServerConnections(Boolean deny);
 extern void CGSShutdownServerConnections(void);
 

@@ -62,6 +62,7 @@ typedef enum {
 - (NSTabPosition) tabPosition;
 - (BOOL) drawsBackground;
 - (BOOL) allowsTruncatedLabels;
+- (NSControlSize) controlSize;
 
 - (void) setDelegate: delegate;
 - (void) setFont: (NSFont *) font;
@@ -69,6 +70,7 @@ typedef enum {
 - (void) setTabPosition: (NSTabPosition) position;
 - (void) setDrawsBackground: (BOOL) flag;
 - (void) setAllowsTruncatedLabels: (BOOL) flag;
+- (void) setControlSize: (NSControlSize) controlSize;
 
 - (NSInteger) numberOfTabViewItems;
 - (NSArray *) tabViewItems;

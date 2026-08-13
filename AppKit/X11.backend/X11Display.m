@@ -46,6 +46,7 @@
 
 #import "CarbonKeys.h"
 #import "X11KeySymToUCS.h"
+#import "X11Theme.h"
 #import <X11/XKBlib.h>
 #import <X11/Xutil.h>
 #import <X11/extensions/XKBrules.h>
@@ -561,6 +562,101 @@ static NSDictionary *modeInfoToDictionary(const XRRModeInfo *mi, int depth) {
 }
 
 - (NSColor *) colorWithName: (NSString *) colorName {
+    NSColor *de = nil;
+
+    // Accent-driven colors: highlight, selected content/text backgrounds,
+    // keyboard focus, selected controls, links. KDE [General] AccentColor.
+    if ([colorName isEqual: @"controlAccentColor"]) {
+        de = [X11Theme accentColor];
+        if (de != nil)
+            return de;
+    } else if ([colorName isEqual: @"selectedContentBackgroundColor"] ||
+               [colorName isEqual: @"selectedControlColor"] ||
+               [colorName isEqual: @"selectedTextBackgroundColor"]) {
+        // KDE [Colors:Selection] BackgroundNormal takes precedence, else accent.
+        de = [X11Theme colorForRole: @"Selection" background: YES];
+        if (de == nil)
+            de = [X11Theme accentColor];
+        if (de != nil)
+            return de;
+    } else if ([colorName isEqual: @"keyboardFocusIndicatorColor"] ||
+               [colorName isEqual: @"alternateSelectedControlColor"]) {
+        de = [X11Theme accentColor];
+        if (de != nil) {
+            // Keep a subtle distinction: focus indicator is accent at 55%,
+            // alternateSelectedControlColor is the flat accent.
+            if ([colorName isEqual: @"keyboardFocusIndicatorColor"]) {
+                return [de colorWithAlphaComponent: 0.55f];
+            }
+            return de;
+        }
+    } else if ([colorName isEqual: @"linkColor"]) {
+        de = [X11Theme accentColor];
+        if (de != nil)
+            return de;
+    }
+
+    // Backgrounds.
+    if ([colorName isEqual: @"windowBackgroundColor"] ||
+        [colorName isEqual: @"controlColor"] ||
+        [colorName isEqual: @"controlBackgroundColor"]) {
+        // KDE: window background for the window bg, button bg for controls.
+        BOOL isWindow = [colorName isEqual: @"windowBackgroundColor"];
+        de = [X11Theme colorForRole: (isWindow ? @"Window" : @"Button")
+                          background: YES];
+        if (de == nil)
+            de = [X11Theme colorForRole: @"Window" background: YES];
+        if (de != nil)
+            return de;
+    } else if ([colorName isEqual: @"textBackgroundColor"]) {
+        de = [X11Theme colorForRole: @"View" background: YES];
+        if (de != nil)
+            return de;
+    } else if ([colorName isEqual: @"menuBackgroundColor"] ||
+               [colorName isEqual: @"mainMenuBarColor"]) {
+        de = [X11Theme colorForRole: @"Window" background: YES];
+        if (de != nil)
+            return de;
+    } else if ([colorName isEqual: @"controlLightHighlightColor"]) {
+        de = [X11Theme colorForRole: @"Button" background: YES];
+        if (de != nil)
+            return de;
+    } else if ([colorName isEqual: @"secondarySelectedControlColor"] ||
+               [colorName isEqual: @"headerColor"]) {
+        de = [X11Theme colorForRole: @"Complement" background: YES];
+        if (de != nil)
+            return de;
+    }
+
+    // Foregrounds.
+    if ([colorName isEqual: @"textColor"] ||
+        [colorName isEqual: @"controlTextColor"] ||
+        [colorName isEqual: @"windowFrameTextColor"] ||
+        [colorName isEqual: @"headerTextColor"] ||
+        [colorName isEqual: @"menuItemTextColor"] ||
+        [colorName isEqual: @"labelColor"]) {
+        de = [X11Theme colorForRole: @"View" background: NO];
+        if (de == nil)
+            de = [X11Theme colorForRole: @"Window" background: NO];
+        if (de != nil)
+            return de;
+    } else if ([colorName isEqual: @"selectedTextColor"] ||
+               [colorName isEqual: @"selectedControlTextColor"] ||
+               [colorName isEqual: @"selectedMenuItemTextColor"] ||
+               [colorName isEqual: @"alternateSelectedControlTextColor"]) {
+        de = [X11Theme colorForRole: @"Selection" background: NO];
+        if (de != nil)
+            return de;
+    } else if ([colorName isEqual: @"unemphasizedSelectedTextColor"]) {
+        de = [X11Theme colorForRole: @"Window" background: NO];
+        if (de != nil)
+            return de;
+    } else if ([colorName isEqual: @"disabledControlTextColor"]) {
+        de = [X11Theme colorForRole: @"Window" background: NO];
+        if (de != nil)
+            return [NSColor grayColor];
+    }
+
     if ([colorName isEqual: @"controlColor"])
         return [NSColor colorWithCalibratedWhite: 0.93 alpha: 1.0];
     if ([colorName isEqual: @"disabledControlTextColor"])

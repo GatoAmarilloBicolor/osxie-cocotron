@@ -188,6 +188,34 @@ static inline CGFloat calibratedWhiteFromRGB(CGFloat r, CGFloat g, CGFloat b) {
             REC601_LUMINANCE_B * b);
 }
 
+- (NSColor *) colorUsingColorSpace: (NSColorSpace *) colorSpace {
+    if (colorSpace == nil)
+        return self;
+
+    CGColorSpaceRef cgColorSpace = [colorSpace CGColorSpace];
+    if (cgColorSpace == NULL)
+        return self;
+
+    NSColorSpaceName spaceName;
+    switch (CGColorSpaceGetModel(cgColorSpace)) {
+        case kCGColorSpaceModelMonochrome:
+            spaceName = NSCalibratedWhiteColorSpace;
+            break;
+        case kCGColorSpaceModelCMYK:
+            spaceName = NSDeviceCMYKColorSpace;
+            break;
+        default:
+            spaceName = NSCalibratedRGBColorSpace;
+            break;
+    }
+
+    return [self colorUsingColorSpaceName: spaceName device: nil];
+}
+
+- (NSColor *) colorUsingColorSpaceName: (NSString *) otherSpaceName {
+    return [self colorUsingColorSpaceName: otherSpaceName device: nil];
+}
+
 - (NSColor *) colorUsingColorSpaceName: (NSString *) otherSpaceName
                                 device: (NSDictionary *) device
 {
@@ -389,6 +417,12 @@ static inline CGFloat calibratedWhiteFromRGB(CGFloat r, CGFloat g, CGFloat b) {
                                          green: green
                                           blue: blue
                                          alpha: alpha];
+
+        if ([otherSpaceName isEqualToString: NSCalibratedRGBColorSpace])
+            return [NSColor colorWithCalibratedRed: red
+                                             green: green
+                                              blue: blue
+                                             alpha: alpha];
     } else if ([_colorSpaceName isEqualToString: NSCustomColorSpace]) {
         CGFloat white = components[0], alpha = components[1];
 
@@ -424,6 +458,10 @@ static inline CGFloat calibratedWhiteFromRGB(CGFloat r, CGFloat g, CGFloat b) {
 
 - (NSString *) colorSpaceName {
     return _colorSpaceName;
+}
+
+- (NSColorSpace *) colorSpace {
+    return [[[NSColorSpace alloc] initWithCGColorSpace: CGColorGetColorSpace(_colorRef)] autorelease];
 }
 
 - (void) getWhite: (CGFloat *) white alpha: (CGFloat *) alpha {

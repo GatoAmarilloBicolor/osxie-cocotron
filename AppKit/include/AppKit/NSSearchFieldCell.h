@@ -36,7 +36,6 @@ enum {
     BOOL _sendsSearchStringImmediately;
     NSButtonCell *_searchButtonCell;
     NSButtonCell *_cancelButtonCell;
-    NSMenu *_searchMenuTemplate;
 }
 
 - (NSArray *) recentSearches;

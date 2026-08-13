@@ -68,6 +68,10 @@ NSNotificationName const NSScreenColorSpaceDidChangeNotification = @"NSScreenCol
     return 1.0;
 }
 
+- (CGFloat) backingScaleFactor {
+    return [self userSpaceScaleFactor];
+}
+
 - (id) description {
     return [NSString stringWithFormat: @"< %@ - frame %@, visible %@ >",
                                        [super description],

@@ -367,8 +367,10 @@ CFIndex CTFontGetLigatureCaretPositions(CTFontRef font, CGGlyph glyph, CGFloat *
 
 CGFontRef CTFontCopyGraphicsFont(CTFontRef font, CTFontDescriptorRef _Nullable *attributes)
 {
-    printf("STUB %s\n", __PRETTY_FUNCTION__);
-    return nil;
+    if (attributes != NULL)
+        *attributes = NULL;
+
+    return CGFontRetain([(KTFont *)font cgFont]);
 }
 
 CTFontRef
@@ -414,6 +416,5 @@ CFDataRef CTFontCopyTable(CTFontRef font, CTFontTableTag table, CTFontTableOptio
 
 CFTypeID CTFontGetTypeID(void)
 {
-    printf("STUB %s\n", __PRETTY_FUNCTION__);
-    return 0;
+    return (CFTypeID) [KTFont self];
 }
