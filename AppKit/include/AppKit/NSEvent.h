@@ -212,6 +212,7 @@ enum { NSApplicationActivated = 0, NSApplicationDeactivated = 1 };
 
 + (NSPoint) mouseLocation;
 + (NSEventModifierFlags) modifierFlags;
++ (NSTimeInterval) doubleClickInterval;
 
 - (instancetype) initWithType: (NSEventType) type
                      location: (NSPoint) location

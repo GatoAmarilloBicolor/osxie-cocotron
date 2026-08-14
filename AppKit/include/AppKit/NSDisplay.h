@@ -95,6 +95,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 - (NSPoint) mouseLocation;
 - (NSUInteger) currentModifierFlags;
+- (NSTimeInterval) doubleClickInterval;
 
 - (NSArray *) orderedWindowNumbers;
 

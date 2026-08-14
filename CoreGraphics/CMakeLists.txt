@@ -182,3 +182,14 @@ target_link_libraries(cgs_smoke
 	Foundation
 	X11
 )
+
+add_osxie_executable(meter_test
+	meter_test.m
+)
+
+target_link_libraries(meter_test
+	AppKit
+	CoreGraphics
+	CoreFoundation
+	Foundation
+)

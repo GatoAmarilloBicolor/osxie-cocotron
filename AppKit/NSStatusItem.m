@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #import <AppKit/NSPopUpWindow.h>
 #import <AppKit/NSRaise.h>
 #import <AppKit/NSStatusBar.h>
+#import <AppKit/NSStatusBarButton.h>
 #import <AppKit/NSStatusItem+Private.h>
 #import <AppKit/NSStatusItem.h>
 #import <AppKit/NSWindow.h>
@@ -361,7 +362,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 - (NSButton *) button {
     if (_button == nil) {
-        _button = [[NSButton alloc] initWithFrame: NSMakeRect(0, 0, 0, 0)];
+        _button = [[NSStatusBarButton alloc] initWithFrame: NSMakeRect(0, 0, 0, 0)];
         [_button setButtonType: NSMomentaryLightButton];
         [_button setTarget: _target];
         [_button setAction: _action];

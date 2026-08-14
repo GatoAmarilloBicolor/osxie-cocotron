@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 #ifdef WIN32
 #import <windows.h>
 #endif
-@class NSStatusBar, NSImage, NSAttributedString, NSMenu, NSView, NSWindow, NSButton;
+@class NSStatusBar, NSImage, NSAttributedString, NSMenu, NSView, NSWindow, NSButton, NSStatusBarButton;
 @interface NSStatusItem : NSObject {
     SEL _action;
     SEL _doubleAction;
@@ -74,7 +74,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 - (NSView *) view;
 - (void) setView: (NSView *) view;
 
-- (NSButton *) button;
+- (NSStatusBarButton *) button;
 
 - (BOOL) highlightMode;
 - (void) setHighlightMode: (BOOL) flag;

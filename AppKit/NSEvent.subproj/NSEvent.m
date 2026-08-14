@@ -40,6 +40,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     return [[NSDisplay currentDisplay] currentModifierFlags];
 }
 
++ (NSTimeInterval) doubleClickInterval {
+    return [[NSDisplay currentDisplay] doubleClickInterval];
+}
+
 - (instancetype) initWithType: (NSEventType) type
                      location: (NSPoint) location
                 modifierFlags: (NSEventModifierFlags) modifierFlags

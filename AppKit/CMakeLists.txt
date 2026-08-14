@@ -116,6 +116,7 @@ set(AppKit_sources
 	NSSpellChecker.m
 	NSTokenAttachmentCell.m
 	NSStatusBar.m
+	NSStatusBarButton.m
 	NSSecureTextField.m
 	NSScreen.m
 	NSPrintOperation.m

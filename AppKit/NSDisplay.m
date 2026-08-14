@@ -40,7 +40,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 + (NSDisplay *) currentDisplay {
-    return NSThreadSharedInstance(@"NSDisplay");
+    static NSDisplay *sharedDisplay = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        sharedDisplay = [[self alloc] init];
+    });
+    return sharedDisplay;
 }
 
 - (instancetype) init {
@@ -61,9 +66,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
          [appKitBundle pathsForResourcesOfType: @"backend"
                                    inDirectory: @"Backends"]) {
         NSBundle *backendBundle = [NSBundle bundleWithPath: path];
-        if ([backendBundle load]) {
+        BOOL loaded = [backendBundle load];
+        if (getenv("OSXIE_TRACE_DISPLAY_INIT")) {
+            NSLog(@"[NSDisplay init] backend path=%@ loaded=%d", path, loaded);
+        }
+        if (loaded) {
             [backends addObject: backendBundle];
         }
+    }
+
+    if (getenv("OSXIE_TRACE_DISPLAY_INIT")) {
+        NSLog(@"[NSDisplay init] appKitBundle=%@ backends=%@",
+              [appKitBundle bundlePath], backends);
     }
 
     // Sort them according to the NSPriority key in their Info.plist files.
@@ -306,6 +320,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (NSUInteger) currentModifierFlags {
+    NSInvalidAbstractInvocation();
+    return 0;
+}
+
+- (NSTimeInterval) doubleClickInterval {
     NSInvalidAbstractInvocation();
     return 0;
 }

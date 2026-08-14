@@ -375,6 +375,8 @@ NSString *const NSAccessibilityLinkRole = @"NSAccessibilityLinkRole";
 NSString *const NSAccessibilityListRole = @"NSAccessibilityListRole";
 NSString *const NSAccessibilityMatteRole = @"NSAccessibilityMatteRole";
 NSString *const NSAccessibilityMenuBarRole = @"NSAccessibilityMenuBarRole";
+NSString *const NSAccessibilityMenuBarItemRole =
+        @"NSAccessibilityMenuBarItemRole";
 NSString *const NSAccessibilityMenuButtonRole =
         @"NSAccessibilityMenuButtonRole";
 NSString *const NSAccessibilityMenuItemRole = @"NSAccessibilityMenuItemRole";
@@ -447,6 +449,8 @@ NSString *const NSAccessibilitySystemFloatingWindowSubrole =
         @"NSAccessibilitySystemFloatingWindowSubrole";
 NSString *const NSAccessibilityTableRowSubrole =
         @"NSAccessibilityTableRowSubrole";
+NSString *const NSAccessibilityTabButtonSubrole =
+        @"NSAccessibilityTabButtonSubrole";
 NSString *const NSAccessibilityTextAttachmentSubrole =
         @"NSAccessibilityTextAttachmentSubrole";
 NSString *const NSAccessibilityTextLinkSubrole =

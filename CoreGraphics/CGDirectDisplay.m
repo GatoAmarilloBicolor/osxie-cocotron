@@ -85,13 +85,13 @@ CGError CGGetOnlineDisplayList(uint32_t maxDisplays,
     // Main display should be the first returned
     if (mainDisplay != kCGNullDirectDisplay) {
         (*displayCount)++;
-        if (maxDisplays > 0)
+        if (maxDisplays > 0 && onlineDisplays != NULL)
             onlineDisplays[0] = mainDisplay;
     }
 
     for (int i = 0; i < [screens count]; i++) {
         if ((i + 1) != mainDisplay) {
-            if (*displayCount < maxDisplays)
+            if (onlineDisplays != NULL && *displayCount < maxDisplays)
                 onlineDisplays[*displayCount] = i + 1;
             (*displayCount)++;
         }
@@ -137,7 +137,7 @@ CGError CGGetActiveDisplayList(uint32_t maxDisplays,
     *displayCount = 0;
     for (int i = 0; i < [screens count]; i++) {
         if (!NSIsEmptyRect([[screens objectAtIndex: i] frame])) {
-            if (*displayCount < maxDisplays)
+            if (activeDisplays != NULL && *displayCount < maxDisplays)
                 activeDisplays[*displayCount] = i + 1;
             (*displayCount)++;
         }
@@ -172,7 +172,7 @@ CGError CGGetDisplaysWithPoint(CGPoint point, uint32_t maxDisplays,
     for (int i = 0; i < [screens count]; i++) {
         NSRect rect = [[screens objectAtIndex: i] frame];
         if (NSPointInRect(point, rect)) {
-            if (*matchingDisplayCount < maxDisplays)
+            if (displays != NULL && *matchingDisplayCount < maxDisplays)
                 displays[*matchingDisplayCount] = i + 1;
             (*matchingDisplayCount)++;
         }
@@ -195,7 +195,7 @@ CGError CGGetDisplaysWithRect(CGRect rect, uint32_t maxDisplays,
     for (int i = 0; i < [screens count]; i++) {
         NSRect screenRect = [[screens objectAtIndex: i] frame];
         if (NSIntersectsRect(rect, screenRect)) {
-            if (*matchingDisplayCount < maxDisplays)
+            if (displays != NULL && *matchingDisplayCount < maxDisplays)
                 displays[*matchingDisplayCount] = i + 1;
             (*matchingDisplayCount)++;
         }
