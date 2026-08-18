@@ -34,6 +34,7 @@ extern const CFStringRef kCGWindowName;
 extern const CFStringRef kCGWindowIsOnscreen;
 extern const CFStringRef kCGWindowOwnerName;
 extern const CFStringRef kCGWindowOwnerPID;
+extern const CFStringRef kCGWindowNumber;
 
 #ifdef __OBJC__
 @class CGEvent;
@@ -64,6 +65,8 @@ typedef CF_OPTIONS(uint32_t, CGWindowImageOption) {
 };
 
 typedef uint32_t CGWindowID;
+
+#define kCGNullWindowID ((CGWindowID)0)
 
 #ifdef __OBJC__
 @interface CGWindow : NSObject
@@ -175,6 +178,7 @@ CF_IMPLICIT_BRIDGING_ENABLED
 COREGRAPHICS_EXPORT CFArrayRef CGWindowListCreate(CGWindowListOption option, CGWindowID relativeToWindow);
 COREGRAPHICS_EXPORT CFArrayRef CGWindowListCreateDescriptionFromArray(CFArrayRef windowArray);
 COREGRAPHICS_EXPORT CGImageRef CGWindowListCreateImageFromArray(CGRect screenBounds, CFArrayRef  windowArray, CGWindowImageOption imageOption);
+COREGRAPHICS_EXPORT CFArrayRef CGWindowListCopyWindowInfo(CGWindowListOption option, CGWindowID relativeToWindow);
 
 COREGRAPHICS_EXPORT CFArrayRef CGWindowListCreate(CGWindowListOption option, CGWindowID relativeToWindow);
 COREGRAPHICS_EXPORT CGImageRef CGWindowListCreateImage(CGRect screenBounds,

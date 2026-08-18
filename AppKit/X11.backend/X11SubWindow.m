@@ -26,7 +26,6 @@
                                   0 /* border_width, border, background */
     );
 
-    [self show];
     return self;
 }
 

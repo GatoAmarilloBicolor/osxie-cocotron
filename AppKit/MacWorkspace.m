@@ -220,6 +220,25 @@
     return @[];
 }
 
+- (BOOL) launchAppWithBundleIdentifier: (NSString *) bundleIdentifier
+                               options: (NSUInteger) options
+        additionalEventParamDescriptor: (NSAppleEventDescriptor *) descriptor
+                      launchIdentifier: (NSNumber **) launchIdentifier
+{
+    NSURL *url = [self URLForApplicationWithBundleIdentifier: bundleIdentifier];
+    if (url == nil)
+        return NO;
+
+    LSLaunchURLSpec spec;
+    spec.appURL = (CFURLRef) url;
+    spec.itemURLs = NULL;
+    spec.passThruParams = NULL;
+    spec.launchFlags = kLSLaunchDefaults | kLSLaunchAsync;
+    spec.asyncRefCon = NULL;
+
+    return LSOpenFromURLSpec(&spec, NULL) == 0;
+}
+
 - (BOOL) launchApplication: (NSString *) application {
     return [self openFile: nil withApplication: application andDeactivate: YES];
 }

@@ -123,6 +123,10 @@ typedef NSUInteger NSWorkspaceIconCreationOptions;
 - (BOOL) launchApplication: (NSString *) application
                   showIcon: (BOOL) showIcon
                 autolaunch: (BOOL) autolaunch;
+- (BOOL) launchAppWithBundleIdentifier: (NSString *) bundleIdentifier
+                               options: (NSUInteger) options
+        additionalEventParamDescriptor: (NSAppleEventDescriptor *) descriptor
+                      launchIdentifier: (NSNumber **) launchIdentifier;
 
 - (void) findApplications;
 - (NSDictionary *) activeApplication;

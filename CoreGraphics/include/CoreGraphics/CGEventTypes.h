@@ -189,7 +189,6 @@ enum {
 };
 
 
-
 typedef uint32_t CGEventTapPlacement;
 enum {
   kCGHeadInsertEventTap = 0,

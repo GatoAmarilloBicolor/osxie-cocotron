@@ -53,6 +53,7 @@ COREGRAPHICS_EXPORT size_t CGDisplayPixelsWide(CGDirectDisplayID display);
 
 COREGRAPHICS_EXPORT boolean_t CGDisplayIsInMirrorSet(CGDirectDisplayID display);
 COREGRAPHICS_EXPORT Boolean CGDisplayIsMain(CGDirectDisplayID display);
+COREGRAPHICS_EXPORT bool CGDisplayIsOnline(CGDirectDisplayID display);
 COREGRAPHICS_EXPORT CGDirectDisplayID
 CGDisplayMirrorsDisplay(CGDirectDisplayID display);
 

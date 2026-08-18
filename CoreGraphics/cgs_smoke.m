@@ -4,6 +4,8 @@
 #include <CoreGraphics/CGSSurface.h>
 #include <CoreGraphics/CGSScreen.h>
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/extensions/Xcomposite.h>
 #include <sys/stat.h>
 #include <stdio.h>
 #include <string.h>
@@ -156,6 +158,69 @@ int main(void)
 	printf("getRect err=%d rect=%.0f,%.0f %.0fx%.0f\n", err, got.origin.x, got.origin.y, got.size.width, got.size.height);
 
 	checkMapped(dpy, win);
+
+	CFArrayRef windowInfo = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID);
+	printf("window list count=%ld\n", windowInfo ? (long) CFArrayGetCount(windowInfo) : -1L);
+	int found = 0;
+	for (CFIndex i = 0; i < CFArrayGetCount(windowInfo); i++)
+	{
+		CFDictionaryRef dict = CFArrayGetValueAtIndex(windowInfo, i);
+		CFStringRef name = CFDictionaryGetValue(dict, kCGWindowName);
+		if (name && CFStringCompare(name, CFSTR("CGS Smoke Window"), 0) == kCFCompareEqualTo)
+		{
+			found = 1;
+			CFNumberRef num = CFDictionaryGetValue(dict, kCGWindowNumber);
+			CFNumberRef layer = CFDictionaryGetValue(dict, kCGWindowLayer);
+			int number = -1, layerVal = -1;
+			CFNumberGetValue(num, kCFNumberIntType, &number);
+			CFNumberGetValue(layer, kCFNumberIntType, &layerVal);
+			printf("  found window #%d layer=%d\n", number, layerVal);
+			CFDictionaryRef bounds = CFDictionaryGetValue(dict, kCGWindowBounds);
+			CFNumberRef x = CFDictionaryGetValue(bounds, CFSTR("X"));
+			CFNumberRef y = CFDictionaryGetValue(bounds, CFSTR("Y"));
+			CFNumberRef w = CFDictionaryGetValue(bounds, CFSTR("Width"));
+			CFNumberRef h = CFDictionaryGetValue(bounds, CFSTR("Height"));
+			int xv = 0, yv = 0, wv = 0, hv = 0;
+			CFNumberGetValue(x, kCFNumberIntType, &xv);
+			CFNumberGetValue(y, kCFNumberIntType, &yv);
+			CFNumberGetValue(w, kCFNumberIntType, &wv);
+			CFNumberGetValue(h, kCFNumberIntType, &hv);
+			printf("  bounds=%d,%d %dx%d\n", xv, yv, wv, hv);
+		}
+	}
+	CFRelease(windowInfo);
+	if (!found)
+	{
+		printf("FAIL: window not found in CGWindowListCopyWindowInfo\n");
+		return 1;
+	}
+
+	CFArrayRef windowIDs = CGWindowListCreate(kCGWindowListOptionAll, kCGNullWindowID);
+	printf("window id list count=%ld\n", windowIDs ? (long) CFArrayGetCount(windowIDs) : -1L);
+	CFRelease(windowIDs);
+
+	CGImageRef cap = CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow,
+		g_wid, kCGWindowImageBoundsIgnoreFraming);
+	if (!cap)
+	{
+		printf("FAIL: CGWindowListCreateImage(window) returned NULL\n");
+		return 1;
+	}
+	printf("capture window: %lux%lu bpp=%lu bpc=%lu\n",
+		(unsigned long) CGImageGetWidth(cap), (unsigned long) CGImageGetHeight(cap),
+		(unsigned long) CGImageGetBitsPerPixel(cap), (unsigned long) CGImageGetBitsPerComponent(cap));
+	CGImageRelease(cap);
+
+	CGImageRef capRoot = CGWindowListCreateImage(CGRectMake(0, 0, 640, 480),
+		kCGWindowListOptionOnScreenOnly, kCGNullWindowID, kCGWindowImageBestResolution);
+	if (!capRoot)
+		printf("SKIP: root capture NULL (composited desktop, known KWin GetImage restriction)\n");
+	else
+	{
+		printf("capture root rect: %lux%lu\n",
+			(unsigned long) CGImageGetWidth(capRoot), (unsigned long) CGImageGetHeight(capRoot));
+		CGImageRelease(capRoot);
+	}
 
 	printf("sleeping 3s so you can see the window...\n");
 	fflush(stdout);

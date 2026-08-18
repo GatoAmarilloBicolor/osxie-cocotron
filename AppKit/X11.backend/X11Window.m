@@ -849,6 +849,21 @@ static NSData *makeWindowIcon() {
     if (bytes == NULL)
         return;
 
+    if (getenv("OSXIE_TRACE_FLUSH")) {
+        size_t nonblack = 0;
+        for (size_t yy = 0; yy < h; yy++) {
+            const unsigned char *row = (const unsigned char *)bytes + yy * stride;
+            for (size_t xx = 0; xx < w; xx++) {
+                if (row[xx*4] != 0 || row[xx*4+1] != 0 || row[xx*4+2] != 0) {
+                    nonblack++;
+                    break;
+                }
+            }
+        }
+        fprintf(stderr, "[TRACE] flushBuffer window=%lu size=%zux%zu nonblack_rows=%zu\n",
+                (unsigned long) _window, w, h, nonblack);
+    }
+
     XWindowAttributes attrs;
     if (!XGetWindowAttributes(_display, _window, &attrs))
         return;

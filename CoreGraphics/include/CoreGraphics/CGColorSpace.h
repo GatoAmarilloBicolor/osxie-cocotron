@@ -35,6 +35,7 @@ COREGRAPHICS_EXPORT const CFStringRef kCGColorSpaceLinearSRGB;
 COREGRAPHICS_EXPORT const CFStringRef kCGColorSpaceExtendedLinearSRGB;
 COREGRAPHICS_EXPORT const CFStringRef kCGColorSpaceExtendedGray;
 COREGRAPHICS_EXPORT const CFStringRef kCGColorSpaceLinearGray;
+COREGRAPHICS_EXPORT const CFStringRef kCGColorSpaceExtendedLinearDisplayP3;
 COREGRAPHICS_EXPORT const CFStringRef kCGColorSpaceExtendedLinearGray;
 
 typedef enum {

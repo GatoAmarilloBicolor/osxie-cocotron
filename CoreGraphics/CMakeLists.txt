@@ -181,6 +181,7 @@ target_link_libraries(cgs_smoke
 	CoreFoundation
 	Foundation
 	X11
+	Xcomposite
 )
 
 add_osxie_executable(meter_test

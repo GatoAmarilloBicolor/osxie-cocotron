@@ -18,6 +18,10 @@
 */
 #import <CoreGraphics/CGSConnection.h>
 #import <CoreGraphics/CGSWindow.h>
+#import <CoreGraphics/CoreGraphicsPrivate.h>
+#import <CoreGraphics/CGImage.h>
+#import <CoreGraphics/CGDataProvider.h>
+#import <CoreGraphics/CGColorSpace.h>
 #import <Foundation/NSRaise.h>
 
 const CFStringRef kCGSWindowTitle = CFSTR("WindowTitle");
@@ -85,12 +89,20 @@ const CFStringRef kCGSWindowTitle = CFSTR("WindowTitle");
     NSInvalidAbstractInvocation();
 }
 
+- (BOOL) isOnscreen {
+    return NO;
+}
+
 - (CGSSurface *) createSurface {
     NSInvalidAbstractInvocation();
 }
 
 - (void *) nativeWindow {
     NSInvalidAbstractInvocation();
+}
+
+- (void*) captureBitmapDataWithWidth: (int*) outWidth height: (int*) outHeight {
+    return NULL;
 }
 
 @end
@@ -101,10 +113,9 @@ CGError CGSSetWindowTitle(CGSConnectionID cid, CGSWindowID wid,
     return CGSSetWindowProperty(cid, wid, kCGSWindowTitle, title);
 }
 
-CFArrayRef __nullable CGWindowListCreate(CGWindowListOption option, CGWindowID relativeToWindow)
+static void CGWindowListCreateImageReleasePixels(void* info, const void* data, size_t size)
 {
-    printf("STUB %s\n", __PRETTY_FUNCTION__);
-    return nil;
+	free((void*) data);
 }
 
 CGImageRef __nullable CGWindowListCreateImage(CGRect screenBounds,
@@ -112,7 +123,43 @@ CGImageRef __nullable CGWindowListCreateImage(CGRect screenBounds,
                                               CGWindowID windowID,
                                               CGWindowImageOption imageOption)
 {
-    printf("STUB %s\n", __PRETTY_FUNCTION__);
-    return nil;
+	int w = 0, h = 0;
+	void* pixels = NULL;
+
+	if (windowID != kCGNullWindowID)
+	{
+		CGSConnection* conn = _CGSConnectionForWindowID(windowID);
+		CGSWindow* window = conn ? [conn windowForId: windowID] : nil;
+
+		if (window)
+			pixels = [window captureBitmapDataWithWidth: &w height: &h];
+	}
+	else
+	{
+		CGSConnection* conn = _CGSConnectionForID(_CGSDefaultConnection());
+
+		if (conn)
+			pixels = [conn captureRootBitmapDataWithRect: screenBounds
+												  width: &w
+												 height: &h];
+	}
+
+	if (!pixels || w <= 0 || h <= 0)
+	{
+		free(pixels);
+		return nil;
+	}
+
+	CGDataProviderRef provider = CGDataProviderCreateWithData(NULL, pixels,
+		(size_t) w * 4 * h, CGWindowListCreateImageReleasePixels);
+	CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+
+	CGImageRef image = CGImageCreate(w, h, 8, 32, w * 4, space,
+		kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little,
+		provider, NULL, YES, kCGRenderingIntentDefault);
+
+	CGColorSpaceRelease(space);
+	CGDataProviderRelease(provider);
+	return image;
 }
 

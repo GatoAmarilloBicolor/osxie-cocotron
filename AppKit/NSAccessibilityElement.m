@@ -25,6 +25,13 @@
 @synthesize accessibilityElement = _isAccessible;
 
 - (NSMethodSignature *) methodSignatureForSelector: (SEL) aSelector {
+    NSString *selectorString = NSStringFromSelector(aSelector);
+    if ([selectorString hasPrefix:@"set"] && [selectorString hasSuffix:@":"]) {
+        // This is a setter method, which typically takes one argument (id type).
+        return [NSMethodSignature signatureWithObjCTypes: "v@:@"];
+    }
+    // For other methods, assume no explicit arguments (beyond self and _cmd).
+    // This might still be too generic for complex methods, but addresses the reported issue.
     return [NSMethodSignature signatureWithObjCTypes: "v@:"];
 }
 

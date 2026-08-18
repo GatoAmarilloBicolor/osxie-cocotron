@@ -19,6 +19,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 #import <AppKit/NSRaise.h>
 #import <AppKit/NSWorkspace.h>
+#import <AppKit/NSEvent.h>
 #import <Foundation/Foundation.h>
 
 NSString *const NSWorkspaceApplicationKey = @"NSWorkspaceApplicationKey";
@@ -83,60 +84,49 @@ NSNotificationName NSWorkspaceWillUnmountNotification = @"NSWorkspaceWillUnmount
 }
 
 - (NSImage *) iconForFile: (NSString *) path {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return [NSImage imageNamed: @"NSApplicationIcon"];
 }
 
 - (NSImage *) iconForFiles: (NSArray *) array {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return [NSImage imageNamed: @"NSApplicationIcon"];
 }
 
 - (NSImage *) iconForFileType: (NSString *) type {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return [NSImage imageNamed: @"NSApplicationIcon"];
 }
 
 - (NSString *) localizedDescriptionForType: (NSString *) type {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return type;
 }
 
 - (BOOL) filenameExtension: (NSString *) extension
             isValidForType: (NSString *) type
 {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return NO;
 }
 
 - (NSString *) preferredFilenameExtensionForType: (NSString *) type {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return nil;
 }
 
 - (BOOL) type: (NSString *) type conformsToType: (NSString *) conformsToType {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return NO;
 }
 
 - (NSString *) typeOfFile: (NSString *) path error: (NSError **) error {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return nil;
 }
 
 - (BOOL) openFile: (NSString *) path {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return NO;
 }
 
 - (BOOL) openFile: (NSString *) path withApplication: (NSString *) application {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return NO;
 }
 
 - (BOOL) openTempFile: (NSString *) path {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return NO;
 }
 
 - (BOOL) openFile: (NSString *) path
@@ -144,32 +134,27 @@ NSNotificationName NSWorkspaceWillUnmountNotification = @"NSWorkspaceWillUnmount
                at: (NSPoint) point
            inView: (NSView *) view
 {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return NO;
 }
 
 - (BOOL) openFile: (NSString *) path
         withApplication: (NSString *) application
           andDeactivate: (BOOL) deactivate
 {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return NO;
 }
 
 - (BOOL) openURL: (NSURL *) url {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return NO;
 }
 
 - (BOOL) selectFile: (NSString *) path
         inFileViewerRootedAtPath: (NSString *) rootedAtPath
 {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return NO;
 }
 
 - (void) slideImage: (NSImage *) image from: (NSPoint) from to: (NSPoint) to {
-    NSInvalidAbstractInvocation();
 }
 
 - (BOOL) performFileOperation: (NSString *) operation
@@ -178,8 +163,7 @@ NSNotificationName NSWorkspaceWillUnmountNotification = @"NSWorkspaceWillUnmount
                         files: (NSArray *) files
                           tag: (NSInteger *) tag
 {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return NO;
 }
 
 - (BOOL) getFileSystemInfoForPath: (NSString *) path
@@ -189,122 +173,150 @@ NSNotificationName NSWorkspaceWillUnmountNotification = @"NSWorkspaceWillUnmount
                       description: (NSString **) description
                              type: (NSString **) type
 {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return NO;
 }
 
 - (BOOL) getInfoForFile: (NSString *) path
             application: (NSString **) application
                    type: (NSString **) type
 {
-    NSInvalidAbstractInvocation();
-    return 0;
+    *application = @"";
+    *type = @"";
+    return YES;
 }
 
 - (void) checkForRemovableMedia {
-    NSInvalidAbstractInvocation();
 }
 
 - (NSArray *) mountNewRemovableMedia {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return @[];
 }
 
 - (NSArray *) mountedRemovableMedia {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return @[];
 }
 
 - (NSArray *) mountedLocalVolumePaths {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return @[];
 }
 
 - (BOOL) unmountAndEjectDeviceAtPath: (NSString *) path {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return NO;
 }
 
 - (BOOL) fileSystemChanged {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return NO;
 }
 
 - (BOOL) userDefaultsChanged {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return NO;
 }
 
 - (void) noteFileSystemChanged {
-    NSInvalidAbstractInvocation();
 }
 
 - (void) noteFileSystemChanged: (NSString *) path {
-    NSInvalidAbstractInvocation();
 }
 
 - (void) noteUserDefaultsChanged {
-    NSInvalidAbstractInvocation();
 }
 
 - (BOOL) isFilePackageAtPath: (NSString *) path {
-    NSInvalidAbstractInvocation();
-    return 0;
+    NSString *ext = [path pathExtension];
+    return [ext isEqualToString: @"app"] || [ext isEqualToString: @"bundle"] || [ext isEqualToString: @"framework"];
 }
 
 - (NSString *) absolutePathForAppBundleWithIdentifier: (NSString *) identifier {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return nil;
 }
 
 - (NSString *) pathForApplication: (NSString *) application {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return nil;
 }
 
 - (NSArray *) launchedApplications {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return @[];
 }
 
 - (NSArray *) runningApplications {
-    // NSInvalidAbstractInvocation();
     return @[];
 }
 
 - (BOOL) launchApplication: (NSString *) application {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return NO;
 }
 
 - (BOOL) launchApplication: (NSString *) application
                   showIcon: (BOOL) showIcon
                 autolaunch: (BOOL) autolaunch
 {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return NO;
 }
 
 - (void) findApplications {
-    NSInvalidAbstractInvocation();
 }
 
 - (NSDictionary *) activeApplication {
-    NSInvalidAbstractInvocation();
-    return 0;
+    return nil;
 }
 
 - (void) hideOtherApplications {
-    NSInvalidAbstractInvocation();
 }
 
 - (NSInteger) extendPowerOffBy: (NSInteger) milliseconds {
-    NSInvalidAbstractInvocation();
     return 0;
 }
 
 - (NSString *) fullPathForApplication: (NSString *) appName {
-    NSInvalidAbstractInvocation();
+    return nil;
+}
+
+- (void) openURL: (NSURL *) url configuration: (id) config completionHandler: (void (^)(id, NSError *)) handler {
+    if (handler) handler(nil, nil);
+}
+
+- (BOOL) openFile: (NSString *) fullPath application: (NSString *) appName {
+    return NO;
+}
+
+- (BOOL) launchAppWithBundleIdentifier: (NSString *) bundleId options: (NSUInteger) options additionalEventParamDescriptor: (NSAppleEventDescriptor *) descriptor launchIdentifier: (NSNumber **) identifier {
+    return NO;
+}
+
+- (BOOL) selectFile: (NSString *) inFileOrNullViewerType: (NSString *) inFileType {
+    return NO;
+}
+
+- (BOOL) selectFile: (NSString *) inFile toShowAtPath: (NSString *) inShowPath {
+    return NO;
+}
+
+- (void) activateFileViewerSelectingURLs: (NSArray *) urls {
+}
+
+- (id) frontmostApplication {
+    return nil;
+}
+
+- (NSRect) iconRectForBadgeContentRect: (NSRect) contentRect {
+    return NSZeroRect;
+}
+
+- (BOOL) setIconImage: (NSImage *) image forFile: (NSString *) fileOptions: (NSDictionary *) options {
+    return NO;
+}
+
+- (BOOL) shouldDelayWindowsOrderingForEvent: (NSEvent *) event {
+    return NO;
+}
+
+- (void) findApplicationsWithOptions: (NSDictionary *) options {
+}
+
+- (void) setRecentDocumentPList: (NSString *) path {
+}
+
+- (id) requestAuthorizationOfType: (NSUInteger) type error: (NSError **) error {
     return nil;
 }
 
@@ -319,7 +331,7 @@ NSNotificationName NSWorkspaceWillUnmountNotification = @"NSWorkspaceWillUnmount
 @end
 
 static dispatch_once_t _initOnceNsWorkspaceOpenConfig;
-static NSWorkspaceOpenConfiguration* _singletonNsWorkspaceOpenConfig;
+static id _singletonNsWorkspaceOpenConfig;
 
 @implementation NSWorkspaceOpenConfiguration
 + (instancetype)configuration {

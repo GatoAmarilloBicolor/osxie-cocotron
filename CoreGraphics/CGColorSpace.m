@@ -47,6 +47,8 @@ const CFStringRef kCGColorSpaceExtendedLinearSRGB =
 const CFStringRef kCGColorSpaceExtendedGray =
         CFSTR("kCGColorSpaceExtendedGray");
 const CFStringRef kCGColorSpaceLinearGray = CFSTR("kCGColorSpaceLinearGray");
+const CFStringRef kCGColorSpaceExtendedLinearDisplayP3 =
+        CFSTR("kCGColorSpaceExtendedLinearDisplayP3");
 const CFStringRef kCGColorSpaceExtendedLinearGray =
         CFSTR("kCGColorSpaceExtendedLinearGray");
 

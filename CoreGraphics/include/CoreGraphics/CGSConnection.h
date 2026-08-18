@@ -35,6 +35,7 @@
 -(instancetype) initWithConnectionID:(CGSConnectionID)connId;
 -(void) dealloc;
 -(CGSWindow*) windowForId:(CGSWindowID)winId;
+-(NSArray<CGSWindow*>*) windowsSnapshot;
 -(CGSWindow*) newWindow:(CGSRegionRef)region;
 -(CGError) destroyWindow:(CGSWindowID)winId;
 
@@ -56,6 +57,12 @@
 
 // For CGL
 -(void*) nativeDisplay;
+
+// Returns a malloc'd buffer of BGRA bytes (premultiplied, alpha=255) capturing
+// the default root window region, owned by the caller, or NULL on failure.
+-(void*) captureRootBitmapDataWithRect:(CGRect) rect
+								  width:(int*) outWidth
+								 height:(int*) outHeight;
 @end
 
 #endif

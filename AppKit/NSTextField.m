@@ -502,6 +502,29 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     [self setStringValue: value];
 }
 
++ (NSTextField *) labelWithString: (NSString *) string {
+    NSTextField *field = [[NSTextField alloc] init];
+    [field setStringValue: string];
+    [field setBezeled: NO];
+    [field setDrawsBackground: NO];
+    [field setEditable: NO];
+    [field setSelectable: NO];
+    return [field autorelease];
+}
+
++ (NSTextField *) wrappingLabelWithString: (NSString *) string {
+    NSTextField *field = [NSTextField labelWithString: string];
+    [field setLineBreakMode: NSLineBreakByWordWrapping];
+    [field setUsesSingleLineMode: NO];
+    return field;
+}
+
++ (NSTextField *) textFieldWithString: (NSString *) string {
+    NSTextField *field = [[NSTextField alloc] init];
+    [field setStringValue: string];
+    return [field autorelease];
+}
+
 @end
 
 @implementation NSTextField (Bindings)

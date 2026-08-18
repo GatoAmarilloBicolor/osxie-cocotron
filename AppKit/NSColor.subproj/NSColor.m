@@ -506,6 +506,62 @@ NSNotificationName const NSSystemColorsDidChangeNotification = @"NSSystemColorsD
                                       nil];
 }
 
++ (NSColor *) systemBlueColor {
+    return [NSColor colorWithCalibratedRed: 0.0 green: 0.478431 blue: 1.0 alpha: 1.0];
+}
+
++ (NSColor *) systemBrownColor {
+    return [NSColor colorWithCalibratedRed: 0.525490 green: 0.372549 blue: 0.258824 alpha: 1.0];
+}
+
++ (NSColor *) systemGrayColor {
+    return [NSColor colorWithCalibratedRed: 0.556863 green: 0.556863 blue: 0.576471 alpha: 1.0];
+}
+
++ (NSColor *) systemGreenColor {
+    return [NSColor colorWithCalibratedRed: 0.188235 green: 0.819608 blue: 0.345098 alpha: 1.0];
+}
+
++ (NSColor *) systemIndigoColor {
+    return [NSColor colorWithCalibratedRed: 0.345098 green: 0.337255 blue: 0.839216 alpha: 1.0];
+}
+
++ (NSColor *) systemMintColor {
+    return [NSColor colorWithCalibratedRed: 0.0 green: 0.784314 blue: 0.745098 alpha: 1.0];
+}
+
++ (NSColor *) systemOrangeColor {
+    return [NSColor colorWithCalibratedRed: 1.0 green: 0.584314 blue: 0.0 alpha: 1.0];
+}
+
++ (NSColor *) systemPinkColor {
+    return [NSColor colorWithCalibratedRed: 1.0 green: 0.215686 blue: 0.368627 alpha: 1.0];
+}
+
++ (NSColor *) systemPurpleColor {
+    return [NSColor colorWithCalibratedRed: 0.686275 green: 0.321569 blue: 0.870588 alpha: 1.0];
+}
+
++ (NSColor *) systemRedColor {
+    return [NSColor colorWithCalibratedRed: 1.0 green: 0.231373 blue: 0.188235 alpha: 1.0];
+}
+
++ (NSColor *) systemTealColor {
+    return [NSColor colorWithCalibratedRed: 0.188235 green: 0.690196 blue: 0.780392 alpha: 1.0];
+}
+
++ (NSColor *) systemYellowColor {
+    return [NSColor colorWithCalibratedRed: 1.0 green: 0.8 blue: 0.0 alpha: 1.0];
+}
+
++ (NSColor *) systemCyanColor {
+    return [NSColor colorWithCalibratedRed: 0.0 green: 0.996078 blue: 1.0 alpha: 1.0];
+}
+
++ (NSColor *) systemColor {
+    return [NSColor controlColor];
+}
+
 + (NSColor *) clearColor {
     return [NSColor colorWithCalibratedRed: 0 green: 0 blue: 0 alpha: 0];
 }

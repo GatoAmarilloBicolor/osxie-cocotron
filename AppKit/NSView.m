@@ -1293,6 +1293,13 @@ static inline void buildTransformsIfNeeded(NSView *self) {
     _tag = tag;
 }
 
+- (void) setClipsToBounds: (BOOL) flag {
+}
+
+- (BOOL) clipsToBounds {
+    return YES;
+}
+
 - (void) _setPreviousKeyView: (NSView *) previous {
     _previousKeyView = previous;
 }
@@ -2145,18 +2152,6 @@ static NSView *viewBeingPrinted = nil;
     if (context == nil) {
         if (viewBeingPrinted != nil) {
             context = [[NSPrintOperation currentOperation] context];
-        } else if (_layer != nil) {
-            CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-            CGFloat width = _frame.size.width;
-            CGFloat height = _frame.size.height;
-            CGContextRef graphicsPort = CGBitmapContextCreate(
-                    NULL, width, height, 8, 0, colorSpace,
-                    kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host);
-            context = [NSGraphicsContext
-                    graphicsContextWithGraphicsPort: graphicsPort
-                                            flipped: NO];
-            CGColorSpaceRelease(colorSpace);
-            CGContextRelease(graphicsPort); // we'll re-fetch it below
         } else {
             context = windowContext;
         }
@@ -2214,7 +2209,8 @@ static NSView *viewBeingPrinted = nil;
     NSGraphicsContext *graphicsContext = [NSGraphicsContext currentContext];
     CGContextRef context = [graphicsContext graphicsPort];
 
-    if (viewBeingPrinted == nil && _layer != nil) {
+    if (viewBeingPrinted == nil && _layer != nil &&
+        context != [[_window graphicsContext] graphicsPort]) {
         CGImageRef image = CGBitmapContextCreateImage(context);
         [_layer setContents:(id)image];
         CGImageRelease(image);
@@ -2487,8 +2483,6 @@ static NSView *viewBeingPrinted = nil;
         }
     }
 
-    [_layerContext render];
-
     // Don't do anything to interfere with what will be drawn in non-debug mode
     if ([NSGraphicsContext inQuartzDebugMode] == NO) {
         removeRectFromInvalidInVisibleRect(self, rect, visibleRect);
@@ -2498,8 +2492,6 @@ static NSView *viewBeingPrinted = nil;
     }
 
     if (shouldFlush) {
-        [_layerContext flush];
-
         // We do the flushWindow here. If any of the display* methods are being
         // used, you want it to update on screen immediately. If the view
         // hierarchy is being displayed as needed at the end of an event,

@@ -40,6 +40,14 @@
 	}
 }
 
+-(NSArray<CGSWindow*>*) windowsSnapshot
+{
+	@synchronized(_windows)
+	{
+		return [[_windows allValues] autorelease];
+	}
+}
+
 -(void) _windowInvalidated: (CGSWindowID) winId
 {
 	@synchronized(_windows)
@@ -92,6 +100,13 @@
 -(void*) nativeDisplay
 {
 	NSInvalidAbstractInvocation();
+}
+
+-(void*) captureRootBitmapDataWithRect:(CGRect) rect
+								  width:(int*) outWidth
+								 height:(int*) outHeight
+{
+	return NULL;
 }
 
 -(CGError) destroyWindow:(CGSWindowID)winId

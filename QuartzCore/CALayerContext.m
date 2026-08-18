@@ -70,8 +70,6 @@
     _subwindow = [subwindow retain];
     _cglWindow = CGLGetWindow([_subwindow nativeWindow]);
 
-    [_subwindow show];
-
     [oldSubwindow release];
 
     [_subwindow setFrame: _frame];

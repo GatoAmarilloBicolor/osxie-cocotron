@@ -23,6 +23,7 @@
 #import <CoreGraphics/CGSConnection.h>
 #import <CoreGraphics/CGSWindow.h>
 #import <CoreGraphics/CGSSurface.h>
+#import <CoreGraphics/CGWindow.h>
 #include <pthread.h>
 #include <unistd.h>
 
@@ -224,6 +225,20 @@ CGError CGSReleaseConnection(CGSConnectionID connId)
 CGSConnectionID _CGSDefaultConnection(void)
 {
 	return CGSMainConnectionID();
+}
+
+CGSConnection* _CGSConnectionForWindowID(CGSWindowID winId)
+{
+	@synchronized(g_connections)
+	{
+		for (NSNumber* connNum in [g_connections allKeys])
+		{
+			CGSConnection* conn = [g_connections objectForKey: connNum];
+			if ([conn windowForId: winId])
+				return conn;
+		}
+	}
+	return nil;
 }
 
 CGSConnectionID CGSDefaultConnectionForThread(void)
@@ -480,4 +495,191 @@ CGError CGSRemoveNotifyProc(CGSNotifyProcPtr proc, CGSNotificationType notificat
 	pthread_mutex_unlock(&g_cgsNotifyProcMutex);
 
 	return kCGSErrorSuccess;
+}
+
+static CFDictionaryRef copyWindowInfoDictionary(CGSWindow* window)
+{
+	CFMutableDictionaryRef dict = CFDictionaryCreateMutable(NULL, 0,
+		&kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+
+	int number = window.windowId;
+	CFNumberRef num = CFNumberCreate(NULL, kCFNumberIntType, &number);
+	CFDictionaryAddValue(dict, kCGWindowNumber, num);
+	CFRelease(num);
+
+	pid_t pid = getpid();
+	num = CFNumberCreate(NULL, kCFNumberIntType, &pid);
+	CFDictionaryAddValue(dict, kCGWindowOwnerPID, num);
+	CFRelease(num);
+
+	NSString* processName = [[NSProcessInfo processInfo] processName];
+	if (processName != nil)
+		CFDictionaryAddValue(dict, kCGWindowOwnerName, (CFStringRef) processName);
+
+	NSString* title = nil;
+	CFTypeRef titleValue = NULL;
+	if ([window getProperty: kCGSWindowTitle value: &titleValue] == kCGSErrorSuccess && titleValue != NULL)
+	{
+		title = (NSString*) titleValue;
+		if ([title isKindOfClass: [NSString class]])
+			CFDictionaryAddValue(dict, kCGWindowName, (CFStringRef) title);
+		CFRelease(titleValue);
+	}
+
+	CGRect bounds;
+	if ([window getRect: &bounds] == kCGSErrorSuccess)
+	{
+		CFMutableDictionaryRef boundsDict = CFDictionaryCreateMutable(NULL, 0,
+			&kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+
+		int x = (int) bounds.origin.x;
+		int y = (int) bounds.origin.y;
+		int w = (int) bounds.size.width;
+		int h = (int) bounds.size.height;
+
+		num = CFNumberCreate(NULL, kCFNumberIntType, &x);
+		CFDictionaryAddValue(boundsDict, CFSTR("X"), num);
+		CFRelease(num);
+		num = CFNumberCreate(NULL, kCFNumberIntType, &y);
+		CFDictionaryAddValue(boundsDict, CFSTR("Y"), num);
+		CFRelease(num);
+		num = CFNumberCreate(NULL, kCFNumberIntType, &w);
+		CFDictionaryAddValue(boundsDict, CFSTR("Width"), num);
+		CFRelease(num);
+		num = CFNumberCreate(NULL, kCFNumberIntType, &h);
+		CFDictionaryAddValue(boundsDict, CFSTR("Height"), num);
+		CFRelease(num);
+
+		CFDictionaryAddValue(dict, kCGWindowBounds, boundsDict);
+		CFRelease(boundsDict);
+	}
+
+	int layer = 0;
+	num = CFNumberCreate(NULL, kCFNumberIntType, &layer);
+	CFDictionaryAddValue(dict, kCGWindowLayer, num);
+	CFRelease(num);
+
+	float alpha = 1.0f;
+	num = CFNumberCreate(NULL, kCFNumberFloatType, &alpha);
+	CFDictionaryAddValue(dict, kCGWindowAlpha, num);
+	CFRelease(num);
+
+	CFDictionaryAddValue(dict, kCGWindowIsOnscreen,
+		[window isOnscreen] ? kCFBooleanTrue : kCFBooleanFalse);
+
+	return dict;
+}
+
+static CFMutableArrayRef copyAllWindowInfoDictionaries(void)
+{
+	CFMutableArrayRef result = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
+
+	@synchronized(g_connections)
+	{
+		for (NSNumber* connNum in [g_connections allKeys])
+		{
+			CGSConnection* conn = [g_connections objectForKey: connNum];
+			for (CGSWindow* window in [conn windowsSnapshot])
+			{
+				CFDictionaryRef dict = copyWindowInfoDictionary(window);
+				CFArrayAppendValue(result, dict);
+				CFRelease(dict);
+			}
+		}
+	}
+
+	return result;
+}
+
+CFArrayRef CGWindowListCopyWindowInfo(CGWindowListOption option, CGWindowID relativeToWindow)
+{
+	CFMutableArrayRef result = copyAllWindowInfoDictionaries();
+
+	CFIndex count = CFArrayGetCount(result);
+	CFIndex i;
+
+	// kCGWindowListOptionAll == 0: everything passes.
+	BOOL onScreenOnly = (option & kCGWindowListOptionOnScreenOnly) != 0;
+
+	if (onScreenOnly || relativeToWindow != kCGNullWindowID)
+	{
+		// Best effort: Osxie's CGS is in-process and does not track cross-window
+		// z-order, so the Above/Below filtering is approximated with the
+		// on-screen set (optionally including the relative window).
+		BOOL including = (option & kCGWindowListOptionIncludingWindow) != 0;
+
+		for (i = count - 1; i >= 0; i--)
+		{
+			CFDictionaryRef dict = CFArrayGetValueAtIndex(result, i);
+			BOOL onscreen = (CFDictionaryGetValue(dict, kCGWindowIsOnscreen) == kCFBooleanTrue);
+
+			if (onScreenOnly && !onscreen)
+			{
+				CFArrayRemoveValueAtIndex(result, i);
+				continue;
+			}
+
+			if (relativeToWindow != kCGNullWindowID && !including)
+			{
+				CFNumberRef num = CFDictionaryGetValue(dict, kCGWindowNumber);
+				uint32_t number = 0;
+				CFNumberGetValue(num, kCFNumberIntType, &number);
+				if (number == relativeToWindow)
+				{
+					CFArrayRemoveValueAtIndex(result, i);
+					continue;
+				}
+			}
+		}
+	}
+
+	return result;
+}
+
+CFArrayRef CGWindowListCreate(CGWindowListOption option, CGWindowID relativeToWindow)
+{
+	CFArrayRef info = CGWindowListCopyWindowInfo(option, relativeToWindow);
+	CFMutableArrayRef result = CFArrayCreateMutable(NULL, CFArrayGetCount(info), &kCFTypeArrayCallBacks);
+
+	for (CFIndex i = 0; i < CFArrayGetCount(info); i++)
+	{
+		CFDictionaryRef dict = CFArrayGetValueAtIndex(info, i);
+		CFNumberRef num = CFDictionaryGetValue(dict, kCGWindowNumber);
+		if (num != NULL)
+			CFArrayAppendValue(result, num);
+	}
+
+	CFRelease(info);
+	return result;
+}
+
+CFArrayRef CGWindowListCreateDescriptionFromArray(CFArrayRef windowArray)
+{
+	CFArrayRef info = copyAllWindowInfoDictionaries();
+	CFMutableArrayRef result = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
+
+	for (CFIndex i = 0; i < CFArrayGetCount(windowArray); i++)
+	{
+		CFNumberRef num = CFArrayGetValueAtIndex(windowArray, i);
+		uint32_t number = 0;
+		CFNumberGetValue(num, kCFNumberIntType, &number);
+
+		for (CFIndex j = 0; j < CFArrayGetCount(info); j++)
+		{
+			CFDictionaryRef dict = CFArrayGetValueAtIndex(info, j);
+			CFNumberRef winNum = CFDictionaryGetValue(dict, kCGWindowNumber);
+			uint32_t winNumber = 0;
+			CFNumberGetValue(winNum, kCFNumberIntType, &winNumber);
+			if (winNumber == number)
+			{
+				CFRetain(dict);
+				CFArrayAppendValue(result, dict);
+				CFRelease(dict);
+				break;
+			}
+		}
+	}
+
+	CFRelease(info);
+	return result;
 }

@@ -19,6 +19,7 @@
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreGraphics/CGDirectDisplay.h>
+#include <CoreGraphics/CGEventTypes.h>
 #include <CoreGraphics/CGGeometry.h>
 #include <stdio.h>
 
@@ -41,6 +42,10 @@ CGOpenGLDisplayMask CGDisplayIDToOpenGLDisplayMask(CGDirectDisplayID a) {
     if(verbose)
         puts("STUB: CGDisplayIDToOpenGLDisplayMask called");
     return 0;
+}
+
+bool CGDisplayIsOnline(CGDirectDisplayID a) {
+    return true;
 }
 
 CGError CGDisplayMoveCursorToPoint(CGDirectDisplayID a, CGPoint b) {
@@ -86,6 +91,14 @@ CGError CGSetDisplayTransferByTable(CGDirectDisplayID a, uint32_t b, const CGGam
 CGError CGSetLocalEventsSuppressionInterval(CFTimeInterval a) {
     if(verbose)
         puts("STUB: CGSetLocalEventsSuppressionInterval called");
+    return (CGError)0;
+}
+
+CGError CGSetLocalEventsFilterDuringSuppressionState(CGEventFilterMask filter, CGEventSuppressionState state) {
+    // Osxie posts synthetic events directly into the local X11 event stream,
+    // so there is no separate "suppression" window to filter; accept everything.
+    if(verbose)
+        puts("STUB: CGSetLocalEventsFilterDuringSuppressionState called");
     return (CGError)0;
 }
 

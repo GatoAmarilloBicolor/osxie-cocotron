@@ -131,4 +131,18 @@
                        face->glyph->advance.y / (O2Float)(2 << 5));
 }
 
+- (CGFloat) underlineThickness {
+    return _size > 0 ? _size / 12.0 : 1.0;
+}
+
+- (CGFloat) underlinePosition {
+    return _size > 0 ? -_size / 4.0 : -2.0;
+}
+
+- (CGRect) boundingRect {
+    O2Font_freetype *o2Font = (O2Font_freetype *) _font;
+    FT_Face face = [o2Font face];
+    return CGRectMake(0, 0, _size, _size);
+}
+
 @end

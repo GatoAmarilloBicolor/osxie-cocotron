@@ -47,6 +47,7 @@
 #import "CarbonKeys.h"
 #import "X11KeySymToUCS.h"
 #import "X11Theme.h"
+#import <X11/Xatom.h>
 #import <X11/XKBlib.h>
 #import <X11/Xutil.h>
 #import <X11/extensions/XKBrules.h>
@@ -75,8 +76,17 @@ static int errorHandler(Display *display, XErrorEvent *errorEvent) {
 static void socketCallback(CFSocketRef s, CFSocketCallBackType type,
                            CFDataRef address, const void *data, void *info)
 {
+    if (getenv("OSXIE_TRACE_EVENTS"))
+        fprintf(stderr, "[EV] socketCallback type=%lu\n", (unsigned long) type);
     X11Display *self = info;
     [self processPendingEvents];
+}
+
+static void pollTimerCallback(CFRunLoopTimerRef t, void *info)
+{
+    X11Display *self = *(X11Display **)info;
+    if (self)
+        [self processPendingEvents];
 }
 #endif
 
@@ -123,6 +133,29 @@ static void socketCallback(CFSocketRef s, CFSocketCallBackType type,
         _source =
                 CFSocketCreateRunLoopSource(kCFAllocatorDefault, _cfSocket, 0);
         CFRunLoopAddSource(CFRunLoopGetMain(), _source, kCFRunLoopCommonModes);
+
+        if (getenv("OSXIE_TRACE_EVENTS"))
+            fprintf(stderr, "[EV] init fd=%d cfSocket=%p source=%p\n",
+                    _fileDescriptor, _cfSocket, _source);
+
+        {
+            static CFRunLoopTimerRef pollTimer = NULL;
+            static X11Display *pollTarget = nil;
+            if (!pollTimer) {
+                pollTarget = self;
+                CFRunLoopTimerContext ctx = {0, &pollTarget, NULL, NULL, NULL};
+                pollTimer = CFRunLoopTimerCreate(
+                    kCFAllocatorDefault,
+                    CFAbsoluteTimeGetCurrent() + 0.1,
+                    0.1,
+                    0, 0,
+                    pollTimerCallback,
+                    &ctx);
+                CFRunLoopAddTimer(CFRunLoopGetMain(), pollTimer, kCFRunLoopCommonModes);
+                fprintf(stderr, "[EV] polling timer installed (100ms)\n");
+                fflush(stderr);
+            }
+        }
 
         CGLRegisterNativeDisplay(_display);
 #endif
@@ -1065,6 +1098,8 @@ static NSDictionary *modeInfoToDictionary(const XRRModeInfo *mi, int depth) {
 #if !defined(DARLING) && !defined(OSXIE)
     [[NSRunLoop currentRunLoop] addInputSource: _inputSource forMode: mode];
 #else
+    if (getenv("OSXIE_TRACE_EVENTS"))
+        fprintf(stderr, "[EV] nextEventMatchingMask\n");
     [self processPendingEvents];
 #endif
 
@@ -1103,13 +1138,53 @@ static NSDictionary *modeInfoToDictionary(const XRRModeInfo *mi, int depth) {
 - (NSArray *) orderedWindowNumbers {
     NSMutableArray *result = [NSMutableArray array];
 
-    for (NSWindow *win in [NSApp windows]) {
-        [result addObject: @([win windowNumber])];
+    Display *display = _display;
+    Window root = DefaultRootWindow(display);
+
+    Atom netClientListStackingAtom = XInternAtom(display, "_NET_CLIENT_LIST_STACKING", False);
+    if (netClientListStackingAtom == None) {
+        NSLog(@"-[X11Display orderedWindowNumbers]: _NET_CLIENT_LIST_STACKING atom not found.");
+        // Fallback to the existing unordered list or return empty
+        for (NSWindow *win in [NSApp windows]) {
+            [result addObject: @([win windowNumber])];
+        }
+        return result;
     }
 
-    NSUnimplementedFunction(); // (Window numbers not even remotely ordered)
+    Atom actualType;
+    int actualFormat;
+    unsigned long nitems;
+    unsigned long bytesAfter;
+    unsigned char *data = NULL;
 
-    return result;
+    if (XGetWindowProperty(display, root, netClientListStackingAtom,
+                           0, (~0L), False, XA_WINDOW, &actualType, &actualFormat,
+                           &nitems, &bytesAfter, &data) == Success &&
+        actualType == XA_WINDOW && actualFormat == 32 && nitems > 0 && data != NULL) {
+
+        Window *windowList = (Window *)data;
+        for (unsigned long i = 0; i < nitems; ++i) {
+            XID xid = windowList[i];
+            id platformWindow = [self windowForID:xid];
+            if (platformWindow) {
+                // Get the NSWindow associated with this XID
+                NSWindow *nsWindow = [(X11Window *)platformWindow delegate];
+                if (nsWindow) {
+                    [result addObject:@([nsWindow windowNumber])];
+                }
+            }
+        }
+        XFree(data);
+    } else {
+        NSLog(@"-[X11Display orderedWindowNumbers]: Failed to get _NET_CLIENT_LIST_STACKING property or no windows.");
+        // Fallback to the existing unordered list or return empty
+        for (NSWindow *win in [NSApp windows]) {
+            [result addObject: @([win windowNumber])];
+        }
+    }
+
+    // _NET_CLIENT_LIST_STACKING is from bottom to top, AppKit expects top to bottom.
+    return [[result reverseObjectEnumerator] allObjects];
 }
 
 - (void) postXEvent: (XEvent *) ev {
@@ -1532,12 +1607,17 @@ static NSDictionary *modeInfoToDictionary(const XRRModeInfo *mi, int depth) {
 {
 #else
 - (void) processPendingEvents {
+    if (getenv("OSXIE_TRACE_EVENTS"))
+        fprintf(stderr, "[EV] processPendingEvents entry\n");
 #endif
     int numEvents;
 
     while ((numEvents = XPending(_display)) > 0) {
         XEvent e;
         int error;
+
+        if (getenv("OSXIE_TRACE_EVENTS"))
+            fprintf(stderr, "[EV] processPendingEvents XPending=%d\n", numEvents);
 
         if ((error = XNextEvent(_display, &e)) != 0)
             NSLog(@"XNextEvent returned %d", error);
@@ -1555,6 +1635,7 @@ static NSDictionary *modeInfoToDictionary(const XRRModeInfo *mi, int depth) {
     NSLog(@"Request code: %d:%d", errorEvent->request_code,
           errorEvent->minor_code);
     NSLog(@"Error code: %d", errorEvent->error_code);
+    NSLog(@"Resource id: 0x%lx", (unsigned long) errorEvent->resourceid);
     return 0;
 }
 

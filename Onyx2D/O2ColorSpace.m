@@ -133,7 +133,9 @@ O2ColorSpaceRef O2ColorSpaceCreateDeviceN(const char **names,
 }
 
 O2ColorSpaceRef O2ColorSpaceCreateWithName(CFStringRef name) {
-    printf("CALLED: O2ColorSpaceCreateWithName\n");
+    static int trace = -1;
+    if (trace < 0) trace = getenv("OSXIE_TRACE_COLORSPACE") ? 1 : 0;
+    if (trace) printf("CALLED: O2ColorSpaceCreateWithName\n");
     if (CFStringCompare(name, kO2ColorSpaceSRGB, 0) == kCFCompareEqualTo) {
         O2ColorSpaceRef cs = [[O2ColorSpace alloc] initWithDeviceRGB];
         cs->_name = kO2ColorSpaceSRGB;

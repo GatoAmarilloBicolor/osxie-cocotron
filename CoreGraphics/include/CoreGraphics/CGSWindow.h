@@ -45,11 +45,16 @@
 -(CGError) getRect:(CGRect*) outRect;
 -(CGError) setProperty:(CFStringRef) key value:(CFTypeRef) value;
 -(CGError) getProperty:(CFStringRef) key value:(CFTypeRef*) value;
+-(BOOL) isOnscreen;
 -(void) invalidate;
 
 // Used, for example, by CGWindowContextCreate()
 -(void*) nativeWindow;
 -(CGSSurface*) createSurface;
+
+// Returns a malloc'd buffer of BGRA bytes (premultiplied, alpha=255) owned by
+// the caller, or NULL if the backend cannot capture the window.
+-(void*) captureBitmapDataWithWidth:(int*) outWidth height:(int*) outHeight;
 
 @property (readonly) CGSWindowID windowId;
 

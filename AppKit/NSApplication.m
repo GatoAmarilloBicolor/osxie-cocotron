@@ -1689,6 +1689,13 @@ NSApplication *NSApp = nil;
     _presentationOptions = options;
 }
 
+- (void) registerUserInterfaceItemSearchHandler: (id) handler {
+    // no-op: search handlers are not supported
+}
+
+- (void) unregisterUserInterfaceItemSearchHandler: (id) handler {
+}
+
 @end
 
 static void _osxie_putnum(uintptr_t v) {

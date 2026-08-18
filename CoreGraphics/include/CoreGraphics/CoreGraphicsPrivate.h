@@ -136,6 +136,7 @@ extern uint32_t CGEventGetEventRecordSize(CGEventRef event);
 #ifdef __OBJC__
 @class CGSConnection;
 CGSConnection* _CGSConnectionForID(CGSConnectionID connId);
+CGSConnection* _CGSConnectionForWindowID(CGSWindowID winId);
 CGSConnection* _CGSConnectionFromEventRecord(const CGSEventRecordPtr record);
 #endif
 

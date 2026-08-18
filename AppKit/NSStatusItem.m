@@ -17,10 +17,14 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
-#import <AppKit/NSGraphicsContext.h>
+#import <AppKit/NSApplication.h>
 #import <AppKit/NSButton.h>
+#import <AppKit/NSEvent.h>
+#import <AppKit/NSGraphicsContext.h>
 #import <AppKit/NSImage.h>
 #import <AppKit/NSMenu.h>
+#import <AppKit/NSMenuView.h>
+#import <AppKit/NSMenuWindow.h>
 #import <AppKit/NSPopUpWindow.h>
 #import <AppKit/NSRaise.h>
 #import <AppKit/NSStatusBar.h>
@@ -282,6 +286,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 - (void) setAction: (SEL) action {
     _action = action;
+    if (_button != nil) {
+        [self _wireButtonAction];
+    }
 }
 - (SEL) doubleAction {
     return _doubleAction;
@@ -294,6 +301,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 - (void) setTarget: (id) target {
     _target = target;
+    if (_button != nil) {
+        [self _wireButtonAction];
+    }
 }
 
 - (NSImage *) image {
@@ -364,12 +374,30 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     if (_button == nil) {
         _button = [[NSStatusBarButton alloc] initWithFrame: NSMakeRect(0, 0, 0, 0)];
         [_button setButtonType: NSMomentaryLightButton];
-        [_button setTarget: _target];
-        [_button setAction: _action];
+        [self _wireButtonAction];
         [self _ensureTrayWindow];
     }
 
     return _button;
+}
+
+- (void) _wireButtonAction {
+    if (_menu != nil) {
+        [_button setTarget: self];
+        [_button setAction: @selector(_showStatusItemMenu:)];
+    } else if (_action != NULL) {
+        [_button setTarget: _target];
+        [_button setAction: _action];
+    } else {
+        [_button setTarget: nil];
+        [_button setAction: NULL];
+    }
+}
+
+- (void) _showStatusItemMenu: (id) sender {
+    if (getenv("OSXIE_TRACE_STATUS") != NULL)
+        NSLog(@"NSStatusItem _showStatusItemMenu: sender=%@ menu=%@", sender, [self menu]);
+    [self popUpStatusItemMenu: [self menu]];
 }
 
 #ifndef WIN32
@@ -484,6 +512,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
     [_menu release];
     _menu = nil;
     _menu = [menu copy];
+    if (_button != nil) {
+        [self _wireButtonAction];
+    }
 #ifndef WIN32
     [self _ensureTrayWindow];
 #endif
@@ -503,6 +534,56 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 - (void) popUpStatusItemMenu: (NSMenu *) menu {
+#ifndef WIN32
+    if (_trayWindow == nil) {
+        return;
+    }
+
+    [menu update];
+    if ([[menu itemArray] count] > 0) {
+        NSWindow *trayWindow = _trayWindow;
+        NSMenuWindow *menuWindow = [[NSMenuWindow alloc] initWithMenu: menu];
+        NSMenuView *menuView = [menuWindow menuView];
+        NSMenuItem *item;
+
+        [menuWindow setReleasedWhenClosed: YES];
+
+        // Position the menu below the tray window, left-aligned with it. The
+        // tray window's NSWindow frame is kept in X11 root coords by the
+        // ConfigureNotify path, so use the platform window to get the absolute
+        // on-screen position.
+        X11Window *trayPlatform = (X11Window *) [trayWindow platformWindow];
+        O2Rect x11Frame = [trayPlatform frame];
+        O2Rect appKitFrame = [trayPlatform transformFrame: x11Frame];
+
+        // AppKit screen coords are bottom-left origin; the menu's top-left
+        // should sit at the tray window's bottom-left so it drops below it.
+        NSPoint menuTopLeft =
+                NSMakePoint(appKitFrame.origin.x, appKitFrame.origin.y);
+        if (getenv("OSXIE_TRACE_STATUS") != NULL)
+            NSLog(@"popUpStatusItemMenu: tray x11=%@ appKit=%@ items=%d",
+                  NSStringFromRect(x11Frame), NSStringFromRect(appKitFrame),
+                  (int)[[menu itemArray] count]);
+        [menuWindow setFrameTopLeftPoint: menuTopLeft];
+        [menuWindow orderFront: nil];
+
+        // Synthesize a mouse-down at the tray so the menu tracking loop has a
+        // starting point; the user then navigates/selects with real events.
+        NSEvent *event = [NSEvent mouseEventWithType: NSLeftMouseDown
+                                            location: NSMakePoint(0, 0)
+                                       modifierFlags: 0
+                                              window: trayWindow
+                                          clickCount: 1
+                                              deltaX: 0
+                                              deltaY: 0];
+        item = [menuView trackForEvent: event];
+
+        [menuWindow close];
+
+        if (item != nil)
+            [NSApp sendAction: [item action] to: [item target] from: item];
+    }
+#endif
 }
 
 - (void) _showContextMenu {
