@@ -29,27 +29,27 @@ SOFTWARE. */
 
 // Cached key/value view of the host DE configuration. Entries are of the
 // form "Section/key" (KDE) or "GTK/key" (GNOME settings.ini).
-static char *_themeCache[32];
+static char *_themeCache[256];
 static int _themeCacheCount = 0;
 
 static char *_sectionForRole(NSString *role) {
     if ([role isEqualToString: @"Selection"])
-        return "[Colors:Selection]";
+        return "Colors:Selection";
     if ([role isEqualToString: @"Window"])
-        return "[Colors:Window]";
+        return "Colors:Window";
     if ([role isEqualToString: @"Button"])
-        return "[Colors:Button]";
+        return "Colors:Button";
     if ([role isEqualToString: @"View"])
-        return "[Colors:View]";
+        return "Colors:View";
     if ([role isEqualToString: @"Complement"])
-        return "[Colors:Complementary]";
+        return "Colors:Complementary";
     if ([role isEqualToString: @"Tooltip"])
-        return "[Colors:Tooltip]";
+        return "Colors:Tooltip";
     return NULL;
 }
 
 static void _cacheSet(const char *key, const char *value) {
-    if (_themeCacheCount >= 32)
+    if (_themeCacheCount >= 256)
         return;
     char *entry = malloc(strlen(key) + strlen(value) + 2);
     sprintf(entry, "%s=%s", key, value);
@@ -58,7 +58,8 @@ static void _cacheSet(const char *key, const char *value) {
 
 // Fills `out` with candidate paths for a config file reachable from the guest
 // container (HOME, then the same through the host root /Volumes/SystemRoot).
-// Returns the number of candidates stored (max 3).
+// Also tries the real /home/<user> path when HOME is set to /Users/<user>.
+// Returns the number of candidates stored (max 5).
 static int _configCandidates(const char *filename, char **out, int outMax) {
     const char *home = getenv("HOME");
     struct passwd *pw = getpwuid(getuid());
@@ -84,14 +85,35 @@ static int _configCandidates(const char *filename, char **out, int outMax) {
             n++;
         }
     }
+    // When HOME=/Users/<user> (osxie macOS path), also try /home/<user>/...
+    // which is the real host path where KDE/GNOME store their configs.
+    if (home != NULL && strncmp(home, "/Users/", 7) == 0) {
+        const char *realHome = home + 6; // /Users/foo -> /home/foo
+        // Check both /home/<user> and /Volumes/SystemRoot/home/<user>
+        if (n < outMax) {
+            out[n] = malloc(strlen(realHome) + strlen(filename) + 48);
+            sprintf(out[n], "/home%s/%s", realHome, filename);
+            n++;
+        }
+        if (n < outMax) {
+            out[n] = malloc(strlen(realHome) + strlen(filename) + 64);
+            sprintf(out[n], "/Volumes/SystemRoot/home%s/%s", realHome, filename);
+            n++;
+        }
+    }
     return n;
 }
 
 // Parses one config file into the cache. Returns YES on first existing file.
 static BOOL _parseIniFile(const char *path, const char *prefix) {
     FILE *f = fopen(path, "r");
-    if (f == NULL)
+    if (f == NULL) {
+        if (getenv("OSXIE_TRACE_THEME"))
+            fprintf(stderr, "[TRACE] X11Theme _parseIniFile: fopen(%s) FAILED\n", path);
         return NO;
+    }
+    if (getenv("OSXIE_TRACE_THEME"))
+        fprintf(stderr, "[TRACE] X11Theme _parseIniFile: fopen(%s) OK, parsing\n", path);
 
     char line[512];
     char currentSection[64] = "";
@@ -132,8 +154,13 @@ static const char *_themeValue(const char *key) {
             return _themeCache[i] + strlen(key) + 1;
     }
 
-    char *kdePaths[3] = {0};
-    int kdeN = _configCandidates(".config/kdeglobals", kdePaths, 3);
+    char *kdePaths[5] = {0};
+    int kdeN = _configCandidates(".config/kdeglobals", kdePaths, 5);
+    if (getenv("OSXIE_TRACE_THEME")) {
+        fprintf(stderr, "[TRACE] X11Theme: HOME=%s, tried %d kde paths:\n", getenv("HOME"), kdeN);
+        for (int i = 0; i < kdeN; i++)
+            fprintf(stderr, "[TRACE]   %s\n", kdePaths[i]);
+    }
     for (int i = 0; i < kdeN; i++) {
         if (_parseIniFile(kdePaths[i], ""))
             break;
@@ -141,8 +168,8 @@ static const char *_themeValue(const char *key) {
     for (int i = 0; i < kdeN; i++)
         free(kdePaths[i]);
 
-    char *gtkPaths[3] = {0};
-    int gtkN = _configCandidates(".config/gtk-3.0/settings.ini", gtkPaths, 3);
+    char *gtkPaths[5] = {0};
+    int gtkN = _configCandidates(".config/gtk-3.0/settings.ini", gtkPaths, 5);
     for (int i = 0; i < gtkN; i++) {
         if (_parseIniFile(gtkPaths[i], "GTK/"))
             break;
@@ -245,7 +272,11 @@ static NSColor *_colorFromString(const char *s) {
     const char *key = background ? "BackgroundNormal" : "ForegroundNormal";
     char full[128];
     snprintf(full, sizeof(full), "%s/%s", section, key);
-    return _colorFromString(_themeValue(full));
+    const char *val = _themeValue(full);
+    if (getenv("OSXIE_TRACE_THEME"))
+        fprintf(stderr, "[TRACE] X11Theme colorForRole:%s bg=%d key=%s val=%s\n",
+                [role UTF8String], background, full, val ? val : "(null)");
+    return _colorFromString(val);
 }
 
 @end

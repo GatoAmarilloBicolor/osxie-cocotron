@@ -659,6 +659,13 @@ NSApplication *NSApp = nil;
     NS_HANDLER [self reportException: localException];
     NS_ENDHANDLER
 
+    if ([_windows count] == 0 && controller) {
+        if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: no windows after launch, forcing newDocument\n");
+        [controller _updateRecentDocumentsMenu];
+        [controller newDocument: self];
+        if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: forced newDocument done\n");
+    }
+
             [pool release];
     if (getenv("OSXIE_TRACE_APP")) fprintf(stderr, "[TRACE] finishLaunching: done\n");
     osxieAppLog("finishLaunching: done");
