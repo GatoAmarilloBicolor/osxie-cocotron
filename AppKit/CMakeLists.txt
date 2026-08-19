@@ -595,7 +595,7 @@ function(add_backend name)
 	endif (BACKEND_RESOURCES)
 endfunction(add_backend)
 
-add_backend(X11
+	add_backend(X11
 	SOURCES
 		X11.backend/X11Display.m
 		X11.backend/X11Window.m
@@ -605,6 +605,7 @@ add_backend(X11
 		X11.backend/X11Cursor.m
 		X11.backend/X11KeySymToUCS.m
 		X11.backend/X11Theme.m
+		$<TARGET_OBJECTS:osxie_dbus_obj>
 	INFO_PLIST
 		X11.backend/Info.plist
 	DEPENDENCIES
@@ -623,4 +624,9 @@ add_backend(X11
 		Xcursor
 		fontconfig
 		xkbfile
+		dbus
+)
+
+target_include_directories(X11_backend PRIVATE
+	${CMAKE_SOURCE_DIR}/src/dbus
 )

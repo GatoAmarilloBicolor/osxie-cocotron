@@ -37,6 +37,7 @@
 #import "X11Display.h"
 #import "X11SubWindow.h"
 #import "X11Window.h"
+#import "osxie_dbus.h"
 #import <X11/Xatom.h>
 #import <X11/Xutil.h>
 #import <unistd.h>
@@ -410,10 +411,61 @@ static NSData *makeWindowIcon() {
     if (!_mapped && !_embedded) {
         XMapWindow(_display, _window);
         _mapped = YES;
+        [self exportMenuViaDBus];
     }
 }
 
+static osxie_dbus_menu_t *g_dbus_menu = NULL;
+
+static void build_menu_tree(osxie_dbus_menu_t *menu, NSMenu *nsMenu, int depth) {
+    if (depth > 4) return;
+    NSArray *items = [nsMenu itemArray];
+    int count = (int)[items count];
+    if (count <= 0) return;
+
+    for (int i = 0; i < count; i++) {
+        NSMenuItem *item = [items objectAtIndex: i];
+        NSString *title = [item title];
+        const char *label = [title cStringUsingEncoding: NSUTF8StringEncoding];
+        int item_id = i + 1;
+
+        if ([item isSeparatorItem]) {
+            fprintf(stderr, "[DBUS-MENU] item %d: separator\n", item_id);
+        } else {
+            fprintf(stderr, "[DBUS-MENU] item %d: %s%s\n", item_id, label ? label : "(null)",
+                    [item hasSubmenu] ? " [submenu]" : "");
+        }
+    }
+}
+
+- (void) exportMenuViaDBus {
+    if (!osxie_dbus_is_available()) return;
+    if (!_delegate) return;
+    if (_embedded) return;
+
+    NSMenu *menu = [_delegate menu];
+    if (!menu) return;
+
+    if (!g_dbus_menu) {
+        g_dbus_menu = osxie_dbus_menu_new("osxie", "application-x-executable");
+        if (!g_dbus_menu) return;
+    }
+
+    osxie_dbus_menu_register_window(g_dbus_menu, (uint32_t) _window);
+}
+
 - (void) dockInSystemTray {
+    static osxie_dbus_tray_t *g_dbus_tray = NULL;
+
+    if (osxie_dbus_is_available() && !g_dbus_tray) {
+        g_dbus_tray = osxie_dbus_tray_new("osxie-tray", "osxie");
+        if (g_dbus_tray) {
+            osxie_dbus_tray_set_status(g_dbus_tray, "Active");
+            if (getenv("OSXIE_TRACE_WINDOW_LIFE"))
+                fprintf(stderr, "[TRACE] StatusNotifierItem created\n");
+        }
+    }
+
     Atom selectionAtom = XInternAtom(_display, "_NET_SYSTEM_TRAY_S0", False);
     Window trayWindow = XGetSelectionOwner(_display, selectionAtom);
     if (trayWindow == None) {

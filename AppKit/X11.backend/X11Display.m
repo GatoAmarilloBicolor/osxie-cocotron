@@ -47,6 +47,7 @@
 #import "CarbonKeys.h"
 #import "X11KeySymToUCS.h"
 #import "X11Theme.h"
+#import "osxie_dbus.h"
 #import <X11/Xatom.h>
 #import <X11/XKBlib.h>
 #import <X11/Xutil.h>
@@ -87,6 +88,7 @@ static void pollTimerCallback(CFRunLoopTimerRef t, void *info)
     X11Display *self = *(X11Display **)info;
     if (self)
         [self processPendingEvents];
+    osxie_dbus_dispatch();
 }
 #endif
 
@@ -162,6 +164,8 @@ static void pollTimerCallback(CFRunLoopTimerRef t, void *info)
 
         _windowsByID = [NSMutableDictionary new];
         [self _enableDetectableAutoRepeat];
+
+        osxie_dbus_init();
 
         XSetLocaleModifiers("");
         _xim = XOpenIM(_display, NULL, NULL, NULL);

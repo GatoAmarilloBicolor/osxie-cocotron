@@ -66,6 +66,7 @@
 - (Window) windowHandle;
 
 - (void) dockInSystemTray;
+- (void) exportMenuViaDBus;
 
 - (void) frameChanged;
 - (void) setLastKnownCursorPosition: (CGPoint) point;
