@@ -50,7 +50,10 @@ static NSDisplay *currentDisplay(void) {
             cls = NSClassFromString(@"NSDisplay");
     }
 
-    return [cls currentDisplay];
+    NSDisplay *d = [cls currentDisplay];
+    if (getenv("OSXIE_TRACE_CGDISPLAY"))
+        fprintf(stderr, "[currentDisplay] cls=%p display=%p\n", (void*)cls, (void*)d);
+    return d;
 }
 
 CGDirectDisplayID CGMainDisplayID(void) {
@@ -74,8 +77,11 @@ CGError CGGetOnlineDisplayList(uint32_t maxDisplays,
                                uint32_t *displayCount)
 {
     NSDisplay *display = currentDisplay();
-    if (!display)
+    if (!display) {
+        if (getenv("OSXIE_TRACE_CGDISPLAY"))
+            fprintf(stderr, "[CGGetOnlineDisplayList] display=nil → InvalidConnection\n");
         return kCGErrorInvalidConnection;
+    }
 
     NSArray<NSScreen *> *screens = [display screens];
     const CGDirectDisplayID mainDisplay = CGMainDisplayID();
@@ -96,6 +102,10 @@ CGError CGGetOnlineDisplayList(uint32_t maxDisplays,
             (*displayCount)++;
         }
     }
+
+    if (getenv("OSXIE_TRACE_CGDISPLAY"))
+        fprintf(stderr, "[CGGetOnlineDisplayList] screens=%lu mainDisplay=%u count=%u\n",
+                (unsigned long)[screens count], mainDisplay, *displayCount);
 
     return kCGErrorSuccess;
 }

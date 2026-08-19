@@ -226,6 +226,7 @@ set(AppKit_sources
 	NSColorPicker.subproj/NSColorPicker.m
 
 	NSEPSImageRep.m
+	NSPICTImageRep.m
 	NSPrintInfo.m
 
 	NSMenu.subproj/NSMainMenuView.m
