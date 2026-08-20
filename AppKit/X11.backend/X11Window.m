@@ -640,6 +640,7 @@ static void build_menu_tree(osxie_dbus_menu_t *menu, NSMenu *nsMenu, int depth) 
         O2ColorSpaceRelease(colorSpace);
         _context = [[O2Context_builtin_FT alloc] initWithSurface: surface
                                                          flipped: NO];
+        [surface release];
     }
     return _context;
 }
