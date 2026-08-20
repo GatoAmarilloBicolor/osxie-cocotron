@@ -36,10 +36,7 @@
 #import <X11/extensions/Xrandr.h>
 #import <X11/XKBlib.h>
 #import <X11/extensions/XKBrules.h>
-
-// TODO: Use XInput2:
-// https://stackoverflow.com/questions/44095001/getting-double-rawkeypress-events-using-xinput2
-// https://github.com/openbsd/xenocara/blob/master/app/xinput/src/test_xi2.c
+#import <X11/extensions/XInput2.h>
 
 @implementation CGSConnectionX11
 
@@ -113,6 +110,29 @@ static void socketCallback(CFSocketRef s, CFSocketCallBackType type, CFDataRef a
 	if (XkbLibraryVersion(&major, &minor) && XkbQueryExtension(_display, NULL, &_xkbEventBase, &major, &minor, NULL))
 	{
 		XkbSelectEvents(_display, XkbUseCoreKbd, /*XkbMapNotifyMask |*/ XkbStateNotifyMask, 1);
+	}
+
+	int xiEvent, xiError;
+	if (XQueryExtension(_display, "XInputExtension", &_xiOpcode, &xiEvent, &xiError)) {
+		int xiMajor = 2, xiMinor = 0;
+		if (XIQueryVersion(_display, &xiMajor, &xiMinor) == Success) {
+			_hasXInput2 = YES;
+
+			XIEventMask evmask;
+			unsigned char mask[(XI_LASTEVENT + 7) / 8] = {0};
+			XISetMask(mask, XI_ButtonPress);
+			XISetMask(mask, XI_ButtonRelease);
+			XISetMask(mask, XI_Motion);
+			XISetMask(mask, XI_KeyPress);
+			XISetMask(mask, XI_KeyRelease);
+
+			evmask.deviceid = XIAllMasterDevices;
+			evmask.mask_len = sizeof(mask);
+			evmask.mask = mask;
+
+			XISelectEvents(_display, DefaultRootWindow(_display), &evmask, 1);
+			XFlush(_display);
+		}
 	}
 
 	return self;

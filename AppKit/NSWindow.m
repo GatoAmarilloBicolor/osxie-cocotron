@@ -2998,7 +2998,6 @@ static BOOL _allowsAutomaticWindowTabbing;
     return [_backgroundView performKeyEquivalent: event];
 }
 
-#if 0
 - (void) keyDown: (NSEvent *) event {
     if (![self performKeyEquivalent: event]) {
         NSString *characters = [event charactersIgnoringModifiers];
@@ -3014,7 +3013,6 @@ static BOOL _allowsAutomaticWindowTabbing;
         }
     }
 }
-#endif
 
 - (void) _resizeWithOldMenuViewSize: (NSSize) oldSize {
     NSSize backSize = [_backgroundView frame].size;

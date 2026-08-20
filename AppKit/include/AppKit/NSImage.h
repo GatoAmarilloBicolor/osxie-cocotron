@@ -238,3 +238,14 @@ APPKIT_EXPORT NSImageName const NSImageNameTouchBarRecordStopTemplate;
 
 APPKIT_EXPORT NSImageHintKey const NSImageHintInterpolation;
 APPKIT_EXPORT NSImageHintKey const NSImageHintCTM;
+
+@interface NSImageSymbolConfiguration : NSObject <NSCopying>
++ (instancetype)configurationWithPointSize:(CGFloat)pointSize;
++ (instancetype)configurationWithWeight:(NSInteger)weight;
++ (instancetype)configurationWithPointSize:(CGFloat)pointSize weight:(NSInteger)weight;
++ (instancetype)configurationWithPointSize:(CGFloat)pointSize weight:(NSInteger)weight scale:(NSInteger)scale;
++ (instancetype)configurationPreferringMulticolor;
+- (instancetype)initWithPointSize:(CGFloat)pointSize weight:(NSInteger)weight scale:(NSInteger)scale;
+- (instancetype)initWithPointSize:(CGFloat)pointSize weight:(NSInteger)weight;
+- (instancetype)configurationByAddingConfiguration:(NSImageSymbolConfiguration *)other;
+@end

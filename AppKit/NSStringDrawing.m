@@ -58,28 +58,3 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 }
 
 @end
-
-@implementation NSAttributedString (NSStringDrawing)
-
-- (void) drawAtPoint: (NSPoint) point {
-    [[NSStringDrawer sharedStringDrawer] drawAttributedString: self
-                                                      atPoint: point
-                                                       inSize: NSZeroSize];
-}
-
-- (void) drawInRect: (NSRect) rect {
-    [[NSStringDrawer sharedStringDrawer] drawAttributedString: self
-                                                       inRect: rect];
-}
-
-- (NSSize) size {
-    return [[NSStringDrawer sharedStringDrawer]
-            sizeOfAttributedString: self
-                            inSize: NSZeroSize];
-}
-
-- (void) drawWithRect: (NSRect) rect options: (NSStringDrawingOptions) options {
-    NSUnimplementedMethod();
-}
-
-@end

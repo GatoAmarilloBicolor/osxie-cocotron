@@ -20,4 +20,5 @@ add_backend(X11
 		Xcursor
 		fontconfig
 		xkbfile
+		Xi
 )

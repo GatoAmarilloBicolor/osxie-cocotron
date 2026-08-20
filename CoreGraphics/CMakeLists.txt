@@ -64,6 +64,7 @@ include_directories(
 	${CMAKE_CURRENT_SOURCE_DIR}/../CoreText
 
 	${PC_CAIRO_INCLUDE_DIRS}
+	/usr/include
 )
 
 set(CoreGraphics_sources
@@ -136,6 +137,8 @@ add_framework(CoreGraphics
 		Onyx2D
 		GL
 		IOKit
+		XTest
+		X11
 )
 
 function(add_backend name)

@@ -1279,6 +1279,54 @@ NSImageName const NSImageNameTouchBarVolumeUpTemplate =
 
 @end
 
+@implementation NSImageSymbolConfiguration
+
++ (instancetype)configurationWithPointSize:(CGFloat)pointSize {
+    return [[self alloc] init];
+}
+
++ (instancetype)configurationWithWeight:(NSInteger)weight {
+    return [[self alloc] init];
+}
+
++ (instancetype)configurationWithPointSize:(CGFloat)pointSize weight:(NSInteger)weight {
+    return [[self alloc] init];
+}
+
++ (instancetype)configurationWithPointSize:(CGFloat)pointSize weight:(NSInteger)weight scale:(NSInteger)scale {
+    return [[self alloc] init];
+}
+
++ (instancetype)configurationPreferringMulticolor {
+    return [[self alloc] init];
+}
+
+- (instancetype)initWithPointSize:(CGFloat)pointSize weight:(NSInteger)weight scale:(NSInteger)scale {
+    return [super init];
+}
+
+- (instancetype)initWithPointSize:(CGFloat)pointSize weight:(NSInteger)weight {
+    return [super init];
+}
+
+- (instancetype)configurationByAddingConfiguration:(NSImageSymbolConfiguration *)other {
+    return self;
+}
+
+- (BOOL)isEqual:(id)object {
+    return self == object;
+}
+
+- (NSUInteger)hash {
+    return 0;
+}
+
+- (id)copyWithZone:(void *)zone {
+    return self;
+}
+
+@end
+
 @implementation NSBundle (NSImage)
 
 - (NSString *) pathForImageResource: (NSString *) name {

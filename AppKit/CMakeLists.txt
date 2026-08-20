@@ -227,6 +227,7 @@ set(AppKit_sources
 
 	NSEPSImageRep.m
 	NSPICTImageRep.m
+	NSScrubberImageItemView.m
 	NSPrintInfo.m
 
 	NSMenu.subproj/NSMainMenuView.m

@@ -1,25 +1,33 @@
-/*
- This file is part of Osxie.
-
- Copyright (C) 2019 Lubos Dolezel
-
- Osxie is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation, either version 3 of the License, or
- (at your option) any later version.
-
- Osxie is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with Osxie.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #include <CoreGraphics/CGEvent.h>
+#include <X11/Xlib.h>
+#include <X11/extensions/XTest.h>
 #include <stdio.h>
+#include <stdarg.h>
 
-CGError CGPostMouseEvent(CGPoint mouseCursorPosition, boolean_t updateMouseCursorPosition, CGButtonCount buttonCount, boolean_t mouseButtonDown, ...) {
-    printf("STUB CGPostMouseEvent called\n");
+CGError CGPostMouseEvent(CGPoint mouseCursorPosition,
+    boolean_t updateMouseCursorPosition, CGButtonCount buttonCount,
+    boolean_t mouseButtonDown, ...)
+{
+    Display* dpy = XOpenDisplay(NULL);
+    if (!dpy)
+        return kCGErrorFailure;
+
+    if (updateMouseCursorPosition)
+        XTestFakeMotionEvent(dpy, -1, (int)mouseCursorPosition.x,
+            (int)mouseCursorPosition.y, CurrentTime);
+
+    if (buttonCount > 0) {
+        va_list args;
+        va_start(args, mouseButtonDown);
+        for (CGButtonCount i = 0; i < buttonCount; i++) {
+            boolean_t down = va_arg(args, int);
+            unsigned int btn = (i == 0) ? Button1 : (i == 1) ? Button3 : (i == 2) ? Button2 : (Button1 + i);
+            XTestFakeButtonEvent(dpy, btn, down ? True : False, CurrentTime);
+        }
+        va_end(args);
+    }
+
+    XFlush(dpy);
+    XCloseDisplay(dpy);
+    return kCGErrorSuccess;
 }

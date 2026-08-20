@@ -41,6 +41,8 @@
 
 	int _xkbEventBase;
 	int _xrrEventBase;
+	int _xiOpcode;
+	BOOL _hasXInput2;
 }
 
 -(instancetype) initWithConnectionID:(CGSConnectionID)connId;
