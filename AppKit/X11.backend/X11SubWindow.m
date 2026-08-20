@@ -11,6 +11,10 @@
     frame.origin.y = [_parent frame].size.height - CGRectGetMaxY(frame);
     frame.origin.y -= top;
     frame.origin.x -= left;
+    if (frame.size.width < 1.0)
+        frame.size.width = 1.0;
+    if (frame.size.height < 1.0)
+        frame.size.height = 1.0;
     return frame;
 }
 

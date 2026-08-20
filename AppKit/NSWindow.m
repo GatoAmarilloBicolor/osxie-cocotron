@@ -2946,8 +2946,21 @@ static BOOL _allowsAutomaticWindowTabbing;
 }
 
 - (void) keyDown: (NSEvent *) event {
-    if ([self performKeyEquivalent: event] == NO)
-        [self interpretKeyEvents: [NSArray arrayWithObject: event]];
+    if (![self performKeyEquivalent: event]) {
+        NSString *characters = [event charactersIgnoringModifiers];
+
+        if ([characters isEqualToString: @" "]) {
+            [_firstResponder tryToPerform: @selector(performClick:) with: nil];
+        } else if ([characters isEqualToString: @"\t"]) {
+            if ([event modifierFlags] & NSShiftKeyMask) {
+                [self selectPreviousKeyView: nil];
+            } else {
+                [self selectNextKeyView: nil];
+            }
+        } else {
+            [self interpretKeyEvents: [NSArray arrayWithObject: event]];
+        }
+    }
 }
 
 - (void) doCommandBySelector: (SEL) selector {
@@ -2996,22 +3009,6 @@ static BOOL _allowsAutomaticWindowTabbing;
 
 - (BOOL) performKeyEquivalent: (NSEvent *) event {
     return [_backgroundView performKeyEquivalent: event];
-}
-
-- (void) keyDown: (NSEvent *) event {
-    if (![self performKeyEquivalent: event]) {
-        NSString *characters = [event charactersIgnoringModifiers];
-
-        if ([characters isEqualToString: @" "]) {
-            [_firstResponder tryToPerform: @selector(performClick:) with: nil];
-        } else if ([characters isEqualToString: @"\t"]) {
-            if ([event modifierFlags] & NSShiftKeyMask) {
-                [self selectPreviousKeyView: nil];
-            } else {
-                [self selectNextKeyView:nil];
-            }
-        }
-    }
 }
 
 - (void) _resizeWithOldMenuViewSize: (NSSize) oldSize {

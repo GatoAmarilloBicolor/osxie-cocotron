@@ -134,7 +134,13 @@ static inline void _clearCurrentContext() {
 
     if ([_view window] != nil)
         rect = [_view convertRect: rect toView: nil];
+    if (rect.size.width < 1.0)
+        rect.size.width = 1.0;
+    if (rect.size.height < 1.0)
+        rect.size.height = 1.0;
     if (_subwindow == nil) {
+        if ([_view window] == nil)
+            return;
         _subwindow = [[[_view window] _createSubWindowWithFrame: rect] retain];
         _cglWindow = CGLGetWindow([_subwindow nativeWindow]);
     } else {
@@ -171,6 +177,9 @@ static inline void _clearCurrentContext() {
     [self performSelectorOnMainThread: @selector(updateViewParameters)
                            withObject: nil
                         waitUntilDone: YES];
+
+    if (_cglWindow == NULL)
+        return;
 
     if ((error = CGLContextMakeCurrentAndAttachToWindow(
                  _glContext, _cglWindow)) != kCGLNoError)

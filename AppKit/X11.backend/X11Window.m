@@ -187,7 +187,16 @@ static NSData *makeWindowIcon() {
     int screen = DefaultScreen(_display);
 
     if ((_visualInfo = glXChooseVisual(_display, screen, att)) == NULL) {
-        NSLog(@"glXChooseVisual failed at %s %d", __FILE__, __LINE__);
+        NSLog(@"glXChooseVisual failed at %s %d; falling back to default visual",
+              __FILE__, __LINE__);
+        Visual *def = DefaultVisual(DefaultScreenOfDisplay(_display), screen);
+        XVisualInfo tmp;
+        tmp.visualid = XVisualIDFromVisual(def);
+        _visualInfo = XGetVisualInfo(_display, VisualIDMask, &tmp, NULL);
+        if (_visualInfo == NULL) {
+            NSLog(@"default visual fallback failed at %s %d", __FILE__,
+                  __LINE__);
+        }
     }
 
     Colormap cmap =
